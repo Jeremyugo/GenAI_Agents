@@ -1,6 +1,7 @@
 dotenv
 loguru
 sqlalchemy
+streamlit
 psycopg2
 psycopg2-binary
 pandas

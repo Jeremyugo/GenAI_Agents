@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[2]))
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from langchain_community.utilities import SQLDatabase
 from langgraph.graph import StateGraph, END
@@ -13,7 +13,7 @@ from langchain_community.agent_toolkits import SQLDatabaseToolkit
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 from utils.helper_functions import postgres_connection_string
-from prompts import check_query_system_prompt, generate_query_system_prompt
+from src.prompts import check_query_system_prompt, generate_query_system_prompt
 from langgraph.checkpoint.memory import InMemorySaver
 
 from utils.config import ENV_FILE_PATH
@@ -24,6 +24,15 @@ langchain_db = SQLDatabase.from_uri(
     database_uri=postgres_connection_string('chinook')
 )
 
+
+function_registry = []
+
+def register_function(func):
+    function_registry.append(func)
+    
+    return func
+
+
 llm = ChatOpenAI(model='gpt-3.5-turbo')
 
 toolkit = SQLDatabaseToolkit(db=langchain_db, llm=llm)
@@ -31,6 +40,7 @@ sql_tools = toolkit.get_tools()
 
 
 # Tools
+@register_function
 @tool
 def list_tables(state: MessagesState):
     """Returns a comma-separated list of tables in the database"""
@@ -41,6 +51,7 @@ def list_tables(state: MessagesState):
     return tool_message
 
 
+@register_function
 @tool
 def get_schema(
         list_of_tables: Annotated[str, 'comma-separated list of tables relevant to the input query']
@@ -53,6 +64,7 @@ def get_schema(
     return tool_message
 
 
+@register_function
 @tool
 def verify_query(
         generated_sql_query: Annotated[str, 'Generated SQL query to be verfied']
@@ -67,6 +79,7 @@ def verify_query(
     return tool_message
 
 
+@register_function
 @tool
 def execute_verified_query(
         sql_query_to_execute: Annotated[str, 'This is the detailed and verified SQL query to executed']
@@ -79,7 +92,7 @@ def execute_verified_query(
     return tool_message
 
 
-tools = [list_tables, get_schema, verify_query, execute_verified_query]
+tools = [f for f in function_registry]
 llm_with_tools = llm.bind_tools(tools)
 
 
@@ -88,10 +101,7 @@ def generate_query(state: MessagesState):
     system_prompt = SystemMessage(
         content=generate_query_system_prompt(dialect=langchain_db, top_k=5)
     )
-    # print(f"state message before: {state['messages']}\n\n")
     response = llm_with_tools.invoke([system_prompt] + state['messages'])
-    # print(f"response: {response}")
-    # print(f"state message after: {state['messages']}\n\n")
     
     return {'messages': [response]}
 
@@ -123,13 +133,23 @@ graph_builder.add_edge('tools', 'generate_query')
 
 graph = graph_builder.compile(checkpointer=memory)
 
-config = {'configurable': {'thread_id': '1'}}
+    
 
-question = "Which genre on average has the longest tracks?"
-
-for step in graph.stream(
-    {"messages": [{"role": "user", "content": question}]},
-    stream_mode="values",
-    config=config
+def interact_with_agent(
+    query: str,
+    session_id: str
 ):
-    step["messages"][-1].pretty_print()
+    config = {'configurable': {'thread_id': session_id}}
+    response = graph.invoke(
+        {
+            'messages': [
+                {
+                    'role': 'user',
+                    'content': query
+                }
+            ]
+        },
+        config=config
+    )
+    
+    return response['messages'][-1].content
