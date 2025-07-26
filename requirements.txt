@@ -1,0 +1,4 @@
+langgraph==0.5.4
+langchain==0.3.27
+langmem
+langchain_community

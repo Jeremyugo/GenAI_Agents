@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+*.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+*.egg
+dist/
+build/
+*.log
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# System files
+Thumbs.db
+
+# LangChain/LLM/Vector DB
+*.db
+*.sqlite
+*.faiss
+*.parquet
+
+# LangGraph
+langgraph_cache/
+langgraph_logs/
+
+# Environment variables
+.env
+.env.*
+
+# Others
+*.bak
+*.tmp
+*.swp
+*.swo
+.idea/
+*.mypy_cache/
+*.pytest_cache/
+.cache/
+__pypackages__/
