@@ -51,3 +51,4 @@ langgraph_logs/
 *.pytest_cache/
 .cache/
 __pypackages__/
+utils/*

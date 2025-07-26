@@ -1,0 +1,135 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+from langchain_community.utilities import SQLDatabase
+from langgraph.graph import StateGraph, END
+from typing import Annotated
+from langgraph.graph import END, MessagesState, StateGraph
+from langgraph.prebuilt import ToolNode
+from langchain_core.tools import tool
+from langchain_core.messages import SystemMessage
+from langchain_community.agent_toolkits import SQLDatabaseToolkit
+from langchain_openai import ChatOpenAI
+from dotenv import load_dotenv
+from utils.helper_functions import postgres_connection_string
+from prompts import check_query_system_prompt, generate_query_system_prompt
+from langgraph.checkpoint.memory import InMemorySaver
+
+from utils.config import ENV_FILE_PATH
+load_dotenv(ENV_FILE_PATH)
+
+memory = InMemorySaver()
+langchain_db = SQLDatabase.from_uri(
+    database_uri=postgres_connection_string('chinook')
+)
+
+llm = ChatOpenAI(model='gpt-3.5-turbo')
+
+toolkit = SQLDatabaseToolkit(db=langchain_db, llm=llm)
+sql_tools = toolkit.get_tools()
+
+
+# Tools
+@tool
+def list_tables(state: MessagesState):
+    """Returns a comma-separated list of tables in the database"""
+    
+    list_tables_tool = next(tool for tool in sql_tools if tool.name == 'sql_db_list_tables')
+    tool_message = list_tables_tool.invoke('')
+    
+    return tool_message
+
+
+@tool
+def get_schema(
+        list_of_tables: Annotated[str, 'comma-separated list of tables relevant to the input query']
+    ):
+    """Input to this tool is a comma-separated list of tables, output is the schema and sample rows for those tables."""
+    
+    get_schema_tool = next(tool for tool in sql_tools if tool.name == 'sql_db_schema')
+    tool_message = get_schema_tool.invoke(list_of_tables)
+    
+    return tool_message
+
+
+@tool
+def verify_query(
+        generated_sql_query: Annotated[str, 'Generated SQL query to be verfied']
+    ):
+    """Verifies the Generated SQL BEFORE executing it"""   
+    
+    system_prompt = check_query_system_prompt(dialect=langchain_db.dialect)
+    content = f"{system_prompt}\n\n{generated_sql_query}"
+    check_query_tool = next(tool for tool in sql_tools if tool.name == 'sql_db_query_checker')
+    tool_message = check_query_tool.invoke(content)
+    
+    return tool_message
+
+
+@tool
+def execute_verified_query(
+        sql_query_to_execute: Annotated[str, 'This is the detailed and verified SQL query to executed']
+    ):
+    """Execute the SQL Query AFTER verifying it with the `verify_query` tool."""
+    
+    execute_query_tool = next(tool for tool in sql_tools if tool.name == 'sql_db_query')
+    tool_message = execute_query_tool.invoke(sql_query_to_execute)
+    
+    return tool_message
+
+
+tools = [list_tables, get_schema, verify_query, execute_verified_query]
+llm_with_tools = llm.bind_tools(tools)
+
+
+def generate_query(state: MessagesState):
+    """Generates the SQL query to be executed"""
+    system_prompt = SystemMessage(
+        content=generate_query_system_prompt(dialect=langchain_db, top_k=5)
+    )
+    # print(f"state message before: {state['messages']}\n\n")
+    response = llm_with_tools.invoke([system_prompt] + state['messages'])
+    # print(f"response: {response}")
+    # print(f"state message after: {state['messages']}\n\n")
+    
+    return {'messages': [response]}
+
+
+def should_continue(state: MessagesState) -> str:
+    last_message = state['messages'][-1]
+    if not last_message.tool_calls:
+        return 'end'
+    else:
+        return 'continue'
+    
+
+# Build Graph
+graph_builder = StateGraph(MessagesState)
+tools_node = ToolNode(tools=tools)
+
+graph_builder.add_node('generate_query', generate_query)
+graph_builder.set_entry_point('generate_query')
+graph_builder.add_node('tools', tools_node)
+graph_builder.add_conditional_edges(
+    source='generate_query',
+    path=should_continue,
+    path_map={
+        'end': END,
+        'continue': 'tools'
+    }
+)
+graph_builder.add_edge('tools', 'generate_query')
+
+graph = graph_builder.compile(checkpointer=memory)
+
+config = {'configurable': {'thread_id': '1'}}
+
+question = "Which genre on average has the longest tracks?"
+
+for step in graph.stream(
+    {"messages": [{"role": "user", "content": question}]},
+    stream_mode="values",
+    config=config
+):
+    step["messages"][-1].pretty_print()
