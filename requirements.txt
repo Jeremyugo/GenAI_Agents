@@ -2,6 +2,10 @@ dotenv
 loguru
 sqlalchemy
 streamlit
+tiktoken
+chromadb
+beautifulsoup4
+flashrank
 psycopg2
 psycopg2-binary
 pandas
