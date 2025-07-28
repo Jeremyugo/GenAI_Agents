@@ -11,6 +11,6 @@ The Agent can:
 6. Execute the query
 7. Provide a response based on the results
 
-## SQL Agent - Interaction 👩‍💻
+## SQL Agent - Demo 👩‍💻
 
 ![SQL-Agent](./static/sql_agent_demo.gif)
