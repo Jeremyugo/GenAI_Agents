@@ -3,7 +3,7 @@ from langchain import hub
 
 
 # Answer Generation prompt 
-generate_system_prompt = hub.pull('rlm/rag-prompt')
+generate_prompt = hub.pull('rlm/rag-prompt')
 
 
 # Document/Context grading prompt

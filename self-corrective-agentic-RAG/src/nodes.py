@@ -1,19 +1,23 @@
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import WebBaseLoader
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain_core.prompts import ChatMessagePromptTemplate, ChatPromptTemplate
-from langgraph.graph import END, StateGraph, START
+import os
+import sys
+import ast
+from pathlib import Path
+from typing import List, TypedDict
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field
 from langchain_community.tools import BraveSearch
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
-from typing import List, TypedDict
-from src.vector import create_vectore_retriever
-from src.prompt import grade_system_prompt, generate_system_prompt, re_write_system_prompt
 from langchain.schema import Document
 from langchain_core.output_parsers import StrOutputParser
-from langchain import hub
-import ast
+
+from src.vector import create_vectore_retriever
+from src.prompt import grade_prompt, generate_prompt, re_write_prompt
+from utils.config import ENV_FILE_PATH
+
+load_dotenv(ENV_FILE_PATH)
 
 compression_retriever = create_vectore_retriever()
 
@@ -30,10 +34,20 @@ class GradeDocuments(BaseModel):
 
 
 # grader llm chain
-structured_llm_grader = llm_gpt3_5.with_structured_output(GradeDocuments)
-retrieval_grader = grade_system_prompt | structured_llm_grader
+structured_llm_grader = llm_4o_mini.with_structured_output(GradeDocuments)
+retrieval_grader = grade_prompt | structured_llm_grader
 
-#
+# answer generation llm chain
+rag_chain = generate_prompt | llm_gpt3_5 | StrOutputParser()
+
+# rewrite user query llm chain
+question_rewriter = re_write_prompt | llm_gpt3_5 |StrOutputParser()
+
+# web search tool (Brave Search)
+web_search_tool = BraveSearch.from_api_key(
+    api_key=os.environ.get('BRAVE_SEARCH_API_KEY'),
+    search_kwargs={'count': 3}
+)
 
 
 class AgentState(TypedDict):
@@ -95,7 +109,7 @@ def grade_documents(state: AgentState) -> AgentState:
         score = retrieval_grader.invoke(
             {
                 'question': question,
-                'context': doc
+                'document': doc
             }
         )
         
@@ -125,4 +139,95 @@ def generate(state: AgentState) -> AgentState:
     """
     
     question = state['question']
+    documents = state['documents']
     
+    generation = rag_chain.invoke(
+        {
+            'question': question,
+            'context': documents
+        }
+    )
+    
+    return {
+        'question': question,
+        'documents': documents,
+        'generation': generation
+    }
+    
+
+def rewrite_query(state: AgentState) -> AgentState:
+    """
+        Transform the query to produce a better question.
+
+        Args:
+            state (dict): The current graph state
+
+        Returns:
+            state (dict): Updates question key with a re-phrased question
+    """
+    
+    question = state['question']
+    documents = state['documents']
+    
+    question_rewriter.invoke({'question': question})
+    
+    return {
+        'question': question,
+        'documents': documents
+    }
+    
+
+def web_search(state: AgentState) -> AgentState:
+    """
+        Web search based on the re-phrased question.
+
+        Args:
+            state (dict): The current graph state
+
+        Returns:
+            state (dict): Updates documents key with appended web results
+    """
+    
+    question = state['question']
+    documents = state['documents']
+    
+    docs = web_search_tool.invoke(
+        {
+            'query': question
+        }
+    )
+    web_results = "\n".join([result['snippet'] for result in ast.literal_eval(docs)])
+    web_results = Document(page_content=web_results)
+    documents.append(web_results)
+    
+    return {
+        'question': question,
+        'documents': documents
+    }
+    
+
+def decide_to_generate(state: AgentState) -> AgentState:
+    """
+        Determines whether to generate an answer, or re-generate a question.
+
+        Args:
+            state (dict): The current graph state
+
+        Returns:
+            str: Binary decision for next node to call
+    """
+    
+    web_search = state['web_search']
+    
+    if web_search == 'Yes':
+        print(
+            'ALL DOCUMENTS ARE NOT RELEVANT TO THE QUESTION, TRANSFORM QUERY...'
+        )
+        return 'transform_query'
+    
+    else:
+        print(
+            'GENERATE...'
+        )
+        return 'generate'
+
