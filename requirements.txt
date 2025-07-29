@@ -3,6 +3,8 @@ loguru
 sqlalchemy
 streamlit
 tiktoken
+neo4j
+graphiti-core
 chromadb
 beautifulsoup4
 flashrank
