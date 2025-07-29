@@ -6,6 +6,7 @@ tiktoken
 neo4j
 graphiti-core
 chromadb
+pypdf
 beautifulsoup4
 flashrank
 psycopg2

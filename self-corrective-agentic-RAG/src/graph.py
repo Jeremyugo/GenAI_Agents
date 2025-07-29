@@ -54,7 +54,7 @@ def interact_with_agent(
         config=config
     )
     
-    ## for debugging -> will be removed once app is built    
+    # for debugging -> will be removed once app is built    
     # for output in agent.stream({'question': query}, config=config):
     #     for k, v in output.items():
     #         print(f'Node: {k}')
@@ -66,4 +66,4 @@ def interact_with_agent(
     
     
 if __name__ == '__main__':
-    interact_with_agent(query="Howa many kids does Barack Obama have and what are their names?", thread_id='1')
+    interact_with_agent(query="Which design pattern allows for the creation of complex objects?", thread_id='1')

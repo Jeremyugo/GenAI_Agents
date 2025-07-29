@@ -7,6 +7,7 @@ This directory contains code and demo of a self corrective and agentic RAG capab
 3. Self-control (decides whether to use retriever tool or search the web for more information)
 
 ## TODO:
+- [ ] Add query classifier
 - [ ] Build a Knowledge Graph
 
 

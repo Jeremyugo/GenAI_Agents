@@ -13,13 +13,13 @@ from langchain_openai import ChatOpenAI
 from langchain.schema import Document
 from langchain_core.output_parsers import StrOutputParser
 
-from src.vector import create_vectore_retriever
+from src.vector import create_vector_retriever
 from src.prompt import grade_prompt, generate_prompt, re_write_prompt
 from utils.config import ENV_FILE_PATH
 
 load_dotenv(ENV_FILE_PATH)
 
-compression_retriever = create_vectore_retriever()
+compression_retriever = create_vector_retriever()
 
 llm_gpt3_5 = ChatOpenAI(model='gpt-3.5-turbo')
 llm_4o_mini = ChatOpenAI(model='gpt-4o-mini')
