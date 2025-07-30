@@ -134,7 +134,7 @@ async def retrieve_from_knowledge_graph(state: AgentState) -> AgentState:
     
     documents_kg = await search_knowledge_graph(
         query=question,
-        limit=5
+        limit=3
     )
     
     return {
