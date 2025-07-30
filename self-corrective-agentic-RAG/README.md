@@ -8,7 +8,7 @@ This directory contains code and demo of a self corrective and agentic RAG capab
 
 ## TODO:
 - [ ] Add query classifier
-- [ ] Build a Knowledge Graph
+- [x] Build a Knowledge Graph
 
 
 ### Graph Flow 🎯
