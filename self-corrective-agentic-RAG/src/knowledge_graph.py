@@ -28,9 +28,6 @@ neo4j_password = os.environ.get('NEO4J_PASSWORD')
 graphiti = Graphiti(neo4j_uri, neo4j_user, neo4j_password)
 
 
-graphiti = Graphiti(neo4j_uri, neo4j_user, neo4j_password)
-
-
 async def create_knowledge_graph(pdf_files: list[str]) -> None:
     doc_splits = prepare_data(pdf_files)
     
