@@ -30,10 +30,6 @@ qdrant_client = create_qdrant_client(
 )
 
 
-llm = ChatOpenAI(model='gpt-3.5-turbo')
-
-
-
 def prepare_data(pdf_files: list[str]) -> list:
     docs = []
 
