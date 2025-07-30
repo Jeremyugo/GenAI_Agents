@@ -35,7 +35,7 @@ This creates a smarter system that retrieves better information and generates mo
 </p>
 
 ### Graph Flow
-**Current Version:** Added
+**Current Version:** Added a Query Classifier
 
 <img src="./static/graph_flow_v1.png" width="400" style="margin-right:10px;" />
 
