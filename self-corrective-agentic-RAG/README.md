@@ -12,4 +12,7 @@ This directory contains code and demo of a self corrective and agentic RAG capab
 
 
 ### Graph Flow 🎯
-![RAG-Agent workflow](./static/graph_flow.png)
+<p>
+  <img src="./static/graph_flow.png" width="400" style="margin-right:10px;" />
+  <img src="./static/graphiti_KG.png" width="500" height="400" />
+</p>
