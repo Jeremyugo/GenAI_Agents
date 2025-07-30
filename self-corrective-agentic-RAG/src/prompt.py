@@ -30,3 +30,24 @@ re_write_prompt = ChatPromptTemplate.from_messages(
         ),
     ]
 )
+
+
+query_classifer_system_prompt = """
+    You are a query classifier in a retrieval-augmented system.
+
+    Classify the user's query into one of the following types:
+
+    1. "conversational" - casual talk, greetings, jokes, opinions, chit-chat.
+    2. "informational" - questions that require facts, knowledge, or external data to answer.
+
+    Only return one word: either "conversational" or "informational".
+
+    Query: "{query}"
+    Classification:
+"""
+query_classifier_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", query_classifer_system_prompt),
+        ("human", "{query}"),
+    ]
+)

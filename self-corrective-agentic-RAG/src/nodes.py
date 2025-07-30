@@ -3,6 +3,7 @@ import sys
 import ast
 from pathlib import Path
 from typing import List, TypedDict
+import asyncio
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
@@ -15,7 +16,7 @@ from langchain_core.output_parsers import StrOutputParser
 
 from src.vector import create_vector_retriever
 from src.knowledge_graph import search_knowledge_graph
-from src.prompt import grade_prompt, generate_prompt, re_write_prompt
+from src.prompt import grade_prompt, generate_prompt, re_write_prompt, query_classifier_prompt
 from utils.config import ENV_FILE_PATH
 
 load_dotenv(ENV_FILE_PATH)
@@ -44,6 +45,9 @@ rag_chain = generate_prompt | llm_gpt3_5 | StrOutputParser()
 # rewrite user query llm chain
 question_rewriter = re_write_prompt | llm_gpt3_5 |StrOutputParser()
 
+# conversational llm chain
+conversational_chain = llm_gpt3_5 | StrOutputParser()
+
 # web search tool (Brave Search)
 web_search_tool = BraveSearch.from_api_key(
     api_key=os.environ.get('BRAVE_SEARCH_API_KEY'),
@@ -70,8 +74,30 @@ class AgentState(TypedDict):
     documents_kg: List[str]
     documents: List[str]
     web_search: str
+
+
+def classify_query(state: AgentState) -> AgentState:
+    """
+        Classify the query into either 'conversational' or 'informational'.
+
+        Args:
+            query (str): The user query to classify.
+
+        Returns:
+            str: The classification result.
+    """
     
+    question = state['question']
+    query_classifier = query_classifier_prompt | llm_gpt3_5 | StrOutputParser()
+    classification = query_classifier.invoke({'query': question})
+
+    if 'conversational' in classification.lower():
+        return 'conversational'
+    else:
+        return 'informational'
+
     
+# DEPRECATED: This function is no longer used in the current graph flow.   
 def retrieve_from_vectorstore(state: AgentState) -> AgentState:
     """
         Retrieve Documents from the Qdrant vectorstore
@@ -92,6 +118,7 @@ def retrieve_from_vectorstore(state: AgentState) -> AgentState:
     }
 
 
+# DEPRECATED: This function is no longer used in the current graph flow.
 async def retrieve_from_knowledge_graph(state: AgentState) -> AgentState:
     """
         Retrieve Documents from the Knowledge Graph
@@ -111,6 +138,30 @@ async def retrieve_from_knowledge_graph(state: AgentState) -> AgentState:
     )
     
     return {
+        'documents_kg': documents_kg
+    }
+
+
+async def retrieve_from_all_sources(state: AgentState) -> AgentState:
+    """
+        Retrieve Documents from both the vectorstore and knowledge graph
+        
+        Args:
+            state (dict): The current graph state
+        
+        Returns:
+            state (dict): New 'documents_vs' and 'documents_kg' keys added to state, that contains the retrieved documents
+    """
+    
+    question = state['question']
+    
+    documents_vs, documents_kg = await asyncio.gather(
+        asyncio.to_thread(compression_retriever.invoke, question),
+        search_knowledge_graph(query=question, limit=5)
+    )
+    
+    return {
+        'documents_vs': documents_vs,
         'documents_kg': documents_kg
     }
 
@@ -157,7 +208,7 @@ def grade_documents(state: AgentState) -> AgentState:
     }
 
 
-def generate(state: AgentState) -> AgentState:
+def generate_rag_response(state: AgentState) -> AgentState:
     """
         Generate answer
 
@@ -183,7 +234,28 @@ def generate(state: AgentState) -> AgentState:
         'documents': documents,
         'generation': generation
     }
+
+
+def generate_conversational_response(state: AgentState) -> AgentState:
+    """
+        Generate conversational response
+
+        Args:
+            state (dict): The current graph state
+
+        Returns:
+            state (dict): New key added to state, generation, that contains LLM generation
+    """
     
+    question = state['question']
+
+    generation = conversational_chain.invoke(question)
+    
+    return {
+        'question': question,
+        'generation': generation
+    }
+
 
 def rewrite_query(state: AgentState) -> AgentState:
     """
