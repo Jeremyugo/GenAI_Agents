@@ -11,8 +11,16 @@ This directory contains code and demo of a self corrective and agentic RAG capab
 - [x] Build a Knowledge Graph
 
 
-### Graph Flow 🎯
+### Knowledge Graph 🎯
 <p>
-  <img src="./static/graph_flow.png" width="400" style="margin-right:10px;" />
   <img src="./static/graphiti_KG.png" width="500" height="400" />
 </p>
+
+### Graph Flow
+**Current Version**
+
+<img src="./static/graph_flow_v1.png" width="400" style="margin-right:10px;" />
+
+**Previous Version**
+
+<img src="./static/graph_flow_v0.png" width="400" style="margin-right:10px;" />
