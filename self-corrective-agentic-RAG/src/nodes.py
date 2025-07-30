@@ -14,6 +14,7 @@ from langchain.schema import Document
 from langchain_core.output_parsers import StrOutputParser
 
 from src.vector import create_vector_retriever
+from src.knowledge_graph import search_knowledge_graph
 from src.prompt import grade_prompt, generate_prompt, re_write_prompt
 from utils.config import ENV_FILE_PATH
 
@@ -58,35 +59,61 @@ class AgentState(TypedDict):
         question: question
         generation: LLM generation
         web_search: whether to add search
-        documents: list of documents
+        documents_vs: list of documents from vectorstore
+        documents_kg: list of documents from knowledge graph
+        documents: list of all documents (vectorstore + knowledge graph)
     """
     
     question: str
     generation: str
+    documents_vs: List[str]
+    documents_kg: List[str]
     documents: List[str]
     web_search: str
     
     
-def retrieve(state: AgentState) -> AgentState:
+def retrieve_from_vectorstore(state: AgentState) -> AgentState:
     """
-        Retrieve Documents from the Chromadb vectorstore
+        Retrieve Documents from the Qdrant vectorstore
         
         Args:
             state (dict): The current graph state
         
         Returns:
-            state (dict): New 'documents' key added to state, that contains the retrieved documents
+            state (dict): New 'documents_vs' key added to state, that contains the retrieved documents
     """
     
     question = state['question']
     
-    documents = compression_retriever.invoke(question)
+    documents_vs = compression_retriever.invoke(question)
     
     return {
-        'question': question,
-        'documents': documents
+        'documents_vs': documents_vs
     }
+
+
+async def retrieve_from_knowledge_graph(state: AgentState) -> AgentState:
+    """
+        Retrieve Documents from the Knowledge Graph
+        
+        Args:
+            state (dict): The current graph state
+        
+        Returns:
+            state (dict): New 'documents_kg' key added to state, that contains the retrieved documents
+    """
     
+    question = state['question']
+    
+    documents_kg = await search_knowledge_graph(
+        query=question,
+        limit=5
+    )
+    
+    return {
+        'documents_kg': documents_kg
+    }
+
 
 def grade_documents(state: AgentState) -> AgentState:
     """
@@ -100,7 +127,10 @@ def grade_documents(state: AgentState) -> AgentState:
     """
     
     question = state['question']
-    documents = state['documents']
+    documents_vs = state['documents_vs']
+    documents_kg = state['documents_kg']
+    
+    documents = documents_vs + documents_kg
     
     filtered_docs = []
     web_search = 'No'
@@ -190,12 +220,13 @@ def web_search(state: AgentState) -> AgentState:
     
     question = state['question']
     documents = state['documents']
-    
+    print(f"Web search for question: {question}")
     docs = web_search_tool.invoke(
         {
             'query': question
         }
     )
+    print(f"Web search results: {docs}\n")
     web_results = "\n".join([result['snippet'] for result in ast.literal_eval(docs)])
     web_results = Document(page_content=web_results)
     documents.append(web_results)

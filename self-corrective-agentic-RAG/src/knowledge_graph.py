@@ -2,11 +2,11 @@ import sys
 import os
 import asyncio
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-sys.path.append(str(Path(__file__).resolve().parents[2]))
-
 from pathlib import Path
 from datetime import datetime, timezone
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 from dotenv import load_dotenv
 from loguru import logger as log
@@ -63,9 +63,12 @@ async def search_knowledge_graph(query: str, limit: int = 5) -> str:
         config=node_search_config,
     )
 
-    knowledge_graph_info = "\n".join(
-        f"Node Name: {node.name}\nContent Summary: {node.summary}\n" 
+    knowledge_graph_info = [
+        f"Node Name: {node.name}\nContent Summary: {node.summary}"
         for node in node_search_results.nodes
-    )
+    ]
     
     return knowledge_graph_info
+
+
+# TODO: Add a function to update the knowledge graph with new data

@@ -5,11 +5,11 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from src import workarounds
 workarounds.monkey_patch()
 
-from langgraph.graph import END, StateGraph
+from langgraph.graph import START, END, StateGraph
 from langgraph.checkpoint.memory import InMemorySaver
 
 from src.nodes import (
-    AgentState, retrieve, grade_documents, generate, 
+    AgentState, retrieve_from_vectorstore, retrieve_from_knowledge_graph, grade_documents, generate, 
     rewrite_query, web_search, decide_to_generate
 )
 
@@ -17,14 +17,17 @@ memory = InMemorySaver()
 
 graph = StateGraph(AgentState)
 
-graph.add_node('retrieve', retrieve)
+graph.add_node('retrieve_from_vectorstore', retrieve_from_vectorstore)
+graph.add_node('retrieve_from_knowledge_graph', retrieve_from_knowledge_graph)
 graph.add_node('grade_documents', grade_documents)
 graph.add_node('generate', generate)
 graph.add_node('transform_query', rewrite_query)
 graph.add_node('web_search', web_search)
 
-graph.set_entry_point('retrieve')
-graph.add_edge('retrieve', 'grade_documents')
+graph.add_edge(START, 'retrieve_from_vectorstore')
+graph.add_edge(START, 'retrieve_from_knowledge_graph')
+graph.add_edge('retrieve_from_vectorstore', 'grade_documents')
+graph.add_edge('retrieve_from_knowledge_graph', 'grade_documents')
 graph.add_conditional_edges(
     source='grade_documents',
     path=decide_to_generate,
@@ -47,23 +50,23 @@ def interact_with_agent(
 ):
     
     config = {'configurable': {'thread_id': thread_id}}
-    response = agent.invoke(
-        {
-            'question': query
-        },
-        config=config
-    )
+    # response = agent.invoke(
+    #     {
+    #         'question': query
+    #     },
+    #     config=config
+    # )
     
-    # for debugging -> will be removed once app is built    
-    # for output in agent.stream({'question': query}, config=config):
-    #     for k, v in output.items():
-    #         print(f'Node: {k}')
-    #     print('\n---\n')
+    #for debugging -> will be removed once app is built    
+    for output in agent.stream({'question': query}, config=config):
+        for k, v in output.items():
+            print(f'Node: {k}')
+        print('\n---\n')
         
 
-    # print(v['generation'])
-    return response['generation']
+    print(v['generation'])
+    # return response['generation']
     
     
 if __name__ == '__main__':
-    interact_with_agent(query="Which design pattern allows for the creation of complex objects?", thread_id='1')
+    interact_with_agent(query="Apple Intelligence", thread_id='1')
