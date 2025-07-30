@@ -2,6 +2,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from xmlrpc import client
 
 from dotenv import load_dotenv
 from loguru import logger as log
@@ -19,11 +20,9 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 from utils.config import ENV_FILE_PATH
 from utils.helper_functions import create_qdrant_client
 
-
-
 load_dotenv(ENV_FILE_PATH)
 
-# Create a Qdrant client
+
 qdrant_client = create_qdrant_client(
     url=os.getenv('QDRANT_URL'),
     api_key=os.getenv('QDRANT_API_KEY'),
