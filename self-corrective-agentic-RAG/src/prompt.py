@@ -3,7 +3,21 @@ from langchain import hub
 
 
 # Answer Generation prompt 
-generate_prompt = hub.pull('rlm/rag-prompt')
+generate_system_prompt = """
+You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. 
+If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
+Conversation history: {history}
+Question: {question} 
+Context: {context} 
+Answer:
+"""
+generate_prompt = ChatPromptTemplate.from_messages(
+    [
+        ("system", generate_system_prompt),
+        ("human", "Conversation history: {history} \n\n Question: {question} \n\n Context: {context}"),
+    ]
+)
+
 
 
 # Document/Context grading prompt
