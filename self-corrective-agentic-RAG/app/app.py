@@ -54,8 +54,7 @@ def run_app() -> None:
             st.session_state.messages.append({"role": "user", "content": user_query})
 
             with st.spinner('Thinking...'):
-                # try:
-                    # Use the existing event loop instead of creating a new one
+                try:
                     loop = asyncio.get_event_loop()
                     if loop.is_running():
                         response = asyncio.run_coroutine_threadsafe(
@@ -83,8 +82,8 @@ def run_app() -> None:
                         }
                     )
 
-                # except Exception as e:
-                #     st.error(str(e))
+                except Exception as e:
+                    st.error(str(e))
         
     return
 
