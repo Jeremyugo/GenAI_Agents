@@ -28,6 +28,9 @@ This creates a smarter system that retrieves better information and generates mo
 - FlashRank (smart document re-ranking) 
 - Streamlit (interactive front-end) 
 
+## App Demo (pleasee wait for GIF to load)
+![rag-demo](./static/agentic_rag_demo.gif)
+
 
 ### Knowledge Graph 🎯
 <p>
