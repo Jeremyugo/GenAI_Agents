@@ -21,16 +21,21 @@ from utils.config import ENV_FILE_PATH
 
 load_dotenv(ENV_FILE_PATH)
 
-neo4j_uri = os.environ.get('NEO4J_URI')
-neo4j_user = os.environ.get('NEO4J_USER')
-neo4j_password = os.environ.get('NEO4J_PASSWORD')
 
-graphiti = Graphiti(neo4j_uri, neo4j_user, neo4j_password)
+def create_graphiti_instance():
+    neo4j_uri = os.environ.get('NEO4J_URI')
+    neo4j_user = os.environ.get('NEO4J_USER')
+    neo4j_password = os.environ.get('NEO4J_PASSWORD')
+
+    graphiti = Graphiti(neo4j_uri, neo4j_user, neo4j_password)
+    
+    return graphiti
 
 
 async def create_knowledge_graph(pdf_files: list[str]) -> None:
     doc_splits = prepare_data(pdf_files)
-    
+
+    graphiti = create_graphiti_instance()
     await graphiti.build_indices_and_constraints()
     
     log.info('Adding episodes to the knowledge graph...')
@@ -54,6 +59,8 @@ async def create_knowledge_graph(pdf_files: list[str]) -> None:
 
 
 async def search_knowledge_graph(query: str, limit: int = 5) -> str:
+
+    graphiti = create_graphiti_instance()
     node_search_config = NODE_HYBRID_SEARCH_RRF.model_copy(deep=True)
     node_search_config.limit = limit 
 
@@ -69,6 +76,3 @@ async def search_knowledge_graph(query: str, limit: int = 5) -> str:
     ]
     
     return knowledge_graph_info
-
-
-# TODO: Add a function to update the knowledge graph with new data

@@ -21,8 +21,6 @@ from utils.config import ENV_FILE_PATH
 
 load_dotenv(ENV_FILE_PATH)
 
-compression_retriever = create_vector_retriever()
-
 llm_gpt3_5 = ChatOpenAI(model='gpt-3.5-turbo')
 llm_4o_mini = ChatOpenAI(model='gpt-4o-mini')
 
@@ -66,6 +64,7 @@ class AgentState(TypedDict):
         documents_vs: list of documents from vectorstore
         documents_kg: list of documents from knowledge graph
         documents: list of all documents (vectorstore + knowledge graph)
+        history: list of all conversation history in the session
     """
     
     question: str
@@ -74,6 +73,7 @@ class AgentState(TypedDict):
     documents_kg: List[str]
     documents: List[str]
     web_search: str
+    history: List[dict]
 
 
 def classify_query(state: AgentState) -> AgentState:
@@ -111,6 +111,7 @@ def retrieve_from_vectorstore(state: AgentState) -> AgentState:
     
     question = state['question']
     
+    compression_retriever = create_vector_retriever()
     documents_vs = compression_retriever.invoke(question)
     
     return {
@@ -154,7 +155,9 @@ async def retrieve_from_all_sources(state: AgentState) -> AgentState:
     """
     
     question = state['question']
-    
+
+    compression_retriever = create_vector_retriever()
+
     documents_vs, documents_kg = await asyncio.gather(
         asyncio.to_thread(compression_retriever.invoke, question),
         search_knowledge_graph(query=question, limit=5)
@@ -221,18 +224,21 @@ def generate_rag_response(state: AgentState) -> AgentState:
     
     question = state['question']
     documents = state['documents']
-    
+    history = state['history']
+
     generation = rag_chain.invoke(
         {
             'question': question,
-            'context': documents
+            'context': documents,
+            'history': history
         }
     )
     
     return {
         'question': question,
         'documents': documents,
-        'generation': generation
+        'generation': generation,
+        'history': history
     }
 
 
@@ -248,12 +254,14 @@ def generate_conversational_response(state: AgentState) -> AgentState:
     """
     
     question = state['question']
+    history = state['history']
 
-    generation = conversational_chain.invoke(question)
-    
+    generation = conversational_chain.invoke(history + [{'role': 'user', 'content': question}])
+
     return {
         'question': question,
-        'generation': generation
+        'generation': generation,
+        'history': history
     }
 
 
