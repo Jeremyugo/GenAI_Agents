@@ -17,4 +17,5 @@ langchain==0.3.27
 langmem
 langchain_community
 langchain-chroma
+langgraph-supervisor
 qdrant_client
