@@ -55,15 +55,13 @@ agent = graph.compile(checkpointer=memory)
 async def interact_with_agent(
     query: str,
     thread_id: str,
-    history: list
 ):
     config = {'configurable': {'thread_id': thread_id}}
 
     # Include history in the agent's input
     response = await agent.ainvoke(
         {
-            'question': query,
-            'history': history
+            'messages': query,
         },
         config=config
     )

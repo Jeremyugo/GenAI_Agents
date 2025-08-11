@@ -6,7 +6,6 @@ from langchain import hub
 generate_system_prompt = """
 You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. 
 If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
-Conversation history: {history}
 Question: {question} 
 Context: {context} 
 Answer:
@@ -14,7 +13,7 @@ Answer:
 generate_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", generate_system_prompt),
-        ("human", "Conversation history: {history} \n\n Question: {question} \n\n Context: {context}"),
+        ("human", "Question: {question} \n\n Context: {context}"),
     ]
 )
 
@@ -52,8 +51,8 @@ query_classifer_system_prompt = """
     Classify the user's query into one of the following types:
 
     1. "conversational" - casual talk, greetings, jokes, opinions, chit-chat.
-    2. "informational" - questions that require facts, knowledge, or external data to answer.
-
+    2. "informational" - questions that require facts, knowledge, or external data to answer regarding Apple Inc./Siri, Artificial Intelligence, or Competitor Analysis/Market research
+    
     Only return one word: either "conversational" or "informational".
 
     Query: "{query}"

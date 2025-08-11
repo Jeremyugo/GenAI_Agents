@@ -53,3 +53,4 @@ langgraph_logs/
 __pypackages__/
 utils/*
 /scratch
+*.json

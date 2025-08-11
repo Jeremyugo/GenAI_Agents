@@ -60,16 +60,14 @@ def run_app() -> None:
                         response = asyncio.run_coroutine_threadsafe(
                             interact_with_agent(
                                 query=user_query,
-                                thread_id=st.session_state['thread_id'],
-                                history=st.session_state['messages']
+                                thread_id=st.session_state['thread_id']
                             ), loop
                         ).result()
                     else:
                         response = loop.run_until_complete(
                             interact_with_agent(
                                 query=user_query,
-                                thread_id=st.session_state['thread_id'],
-                                history=st.session_state['messages']
+                                thread_id=st.session_state['thread_id']
                             )
                         )
 

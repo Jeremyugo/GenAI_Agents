@@ -13,6 +13,8 @@ from langchain_community.tools import BraveSearch
 from langchain_openai import ChatOpenAI
 from langchain.schema import Document
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.messages import HumanMessage
+from langgraph.graph import MessagesState
 
 from src.vector import create_vector_retriever
 from src.knowledge_graph import search_knowledge_graph
@@ -53,7 +55,7 @@ web_search_tool = BraveSearch.from_api_key(
 )
 
 
-class AgentState(TypedDict):
+class AgentState(MessagesState):
     """
     Represents the state of our graph.
 
@@ -64,7 +66,6 @@ class AgentState(TypedDict):
         documents_vs: list of documents from vectorstore
         documents_kg: list of documents from knowledge graph
         documents: list of all documents (vectorstore + knowledge graph)
-        history: list of all conversation history in the session
     """
     
     question: str
@@ -73,12 +74,28 @@ class AgentState(TypedDict):
     documents_kg: List[str]
     documents: List[str]
     web_search: str
-    history: List[dict]
+
+
+def extract_core_question(message: str) -> str:
+    system_prompt = (
+        "You are an assistant that extracts the question from a user message for document retrieval"
+        "Return only the question text without extra commentary"
+    )
+    
+    result = llm_gpt3_5.invoke([
+        HumanMessage(content=system_prompt),
+        HumanMessage(content=message)
+    ])
+    
+    return result.content.strip()
+
 
 
 def classify_query(state: AgentState) -> AgentState:
     """
         Classify the query into either 'conversational' or 'informational'.
+        If the query relates to Apple Inc./Siri, Artificial Intelligence, or Competitor Analysis/Market research
+        then its 'informational' otherwise its 'coonversational'
 
         Args:
             query (str): The user query to classify.
@@ -87,9 +104,9 @@ def classify_query(state: AgentState) -> AgentState:
             str: The classification result.
     """
     
-    question = state['question']
+    user_query = state['messages'][-1].content
     query_classifier = query_classifier_prompt | llm_gpt3_5 | StrOutputParser()
-    classification = query_classifier.invoke({'query': question})
+    classification = query_classifier.invoke({'query': user_query})
 
     if 'conversational' in classification.lower():
         return 'conversational'
@@ -154,7 +171,10 @@ async def retrieve_from_all_sources(state: AgentState) -> AgentState:
             state (dict): New 'documents_vs' and 'documents_kg' keys added to state, that contains the retrieved documents
     """
     
-    question = state['question']
+    question = extract_core_question(
+        message=state['messages'][-1].content
+    )
+    print(f"Formulated question: {question}\n\n")
 
     compression_retriever = create_vector_retriever()
 
@@ -164,6 +184,7 @@ async def retrieve_from_all_sources(state: AgentState) -> AgentState:
     )
     
     return {
+        'question': question,
         'documents_vs': documents_vs,
         'documents_kg': documents_kg
     }
@@ -224,13 +245,11 @@ def generate_rag_response(state: AgentState) -> AgentState:
     
     question = state['question']
     documents = state['documents']
-    history = state['history']
 
     generation = rag_chain.invoke(
         {
             'question': question,
             'context': documents,
-            'history': history
         }
     )
     
@@ -238,7 +257,6 @@ def generate_rag_response(state: AgentState) -> AgentState:
         'question': question,
         'documents': documents,
         'generation': generation,
-        'history': history
     }
 
 
@@ -253,15 +271,12 @@ def generate_conversational_response(state: AgentState) -> AgentState:
             state (dict): New key added to state, generation, that contains LLM generation
     """
     
-    question = state['question']
-    history = state['history']
+    user_query = state['messages']
 
-    generation = conversational_chain.invoke(history + [{'role': 'user', 'content': question}])
+    generation = conversational_chain.invoke(user_query)
 
     return {
-        'question': question,
         'generation': generation,
-        'history': history
     }
 
 
@@ -306,7 +321,7 @@ def web_search(state: AgentState) -> AgentState:
             'query': question
         }
     )
-    print(f"Web search results: {docs}\n")
+
     web_results = "\n".join([result['snippet'] for result in ast.literal_eval(docs)])
     web_results = Document(page_content=web_results)
     documents.append(web_results)
