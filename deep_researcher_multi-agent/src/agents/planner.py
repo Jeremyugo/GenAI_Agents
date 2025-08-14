@@ -64,5 +64,5 @@ class PlanningAgent(BaseAgent):
     @classmethod
     def create_agent(cls, model_name: str = "gpt-4o"):
         agent = cls(model_name=model_name)
-        return agent.build__agent()
+        return agent.build_agent()
         

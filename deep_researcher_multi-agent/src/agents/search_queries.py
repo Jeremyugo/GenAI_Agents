@@ -3,15 +3,28 @@ import os
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+import ast
+import asyncio
+
+from pydantic import BaseModel, Field
+
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableLambda
+from langchain_openai import ChatOpenAI
+from langchain_community.tools import BraveSearch
+from langchain_community.document_loaders import WebBaseLoader
+from langgraph.graph import StateGraph
+
 from src.prompts import search_query_generation_prompt
 from src.state import AgentState
 from src.utils import BaseAgent
 
-from pydantic import BaseModel, Field
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
-from langchain_core.runnables import RunnableLambda
-from langgraph.graph import StateGraph
+
+
+search_tool = BraveSearch.from_api_key(
+    api_key=os.environ.get('BRAVE_SEARCH_API_KEY'),
+    search_kwargs={'count': 5}
+)
 
 
 class SearchQuery(BaseModel):
@@ -41,9 +54,11 @@ class SearchQueryAgent(BaseAgent):
     
     def generate_batch_queries(self, input_dict):
         return self.chain.batch([
-            {'number_of_queries': input_dict['number_of_queries'],
-            'topic': input_dict['topic'],
-            'research_plan': plan_item}
+            {
+                'number_of_queries': input_dict['number_of_queries'],
+                'topic': input_dict['topic'],
+                'research_plan': plan_item
+            }
             for plan_item in input_dict['research_plan_items']
         ])
     
@@ -59,7 +74,9 @@ class SearchQueryAgent(BaseAgent):
         )
         
         generated_search_queries = [
-            query.search_query for result in generated_search_queries for query in result.search_queries
+            query.search_query 
+            for result in generated_search_queries 
+            for query in result.search_queries
         ]
         
         return {
@@ -67,12 +84,81 @@ class SearchQueryAgent(BaseAgent):
         }
     
     
+    
+    @staticmethod
+    async def brave_search_async(queries: list[str]) -> list:
+        async def search(query):
+            while True:
+                try:
+                    return await search_tool.ainvoke(query)
+                except Exception as e:
+                    if "429" in str(e):
+                        await asyncio.sleep(0.5)
+                    else:
+                        raise
+        return [await search(q) or await asyncio.sleep(0.5) for q in queries]
+    
+    
+    @staticmethod
+    async def load_with_real_timeout(url: str, timeout: float = 2.0):
+        try:
+            return await asyncio.wait_for(asyncio.to_thread(WebBaseLoader(url).load), timeout)
+        except (asyncio.TimeoutError, Exception):
+            return []
+
+
+    @staticmethod
+    async def load_all_fast(urls: list[str]):
+        results = []
+        for url in urls:
+            docs = await SearchQueryAgent.load_with_real_timeout(url)
+            results.extend(docs)
+        return results
+
+
+    @staticmethod
+    async def deduplicate_and_load_page_content(search_results: list[str], load_full_page_content: bool = False):
+        search_results = [ast.literal_eval(result) for result in search_results]
+        search_results = [item for sublist in search_results for item in sublist]
+        
+        if load_full_page_content:
+            unique_links = []
+            
+            for web_result in search_results:
+                if web_result['link'] not in unique_links:
+                    unique_links.append(web_result['link'])
+                    
+            docs = await SearchQueryAgent.load_all_fast(unique_links)
+            return docs
+        
+        return search_results
+    
+    
+    @staticmethod
+    async def perform_web_research(state: AgentState, load_full_page_content: bool = False):
+        
+        generated_search_queries = state['search_queries']
+        
+        brave_search_results = await SearchQueryAgent.brave_search_async(generated_search_queries)
+        brave_search_results = await SearchQueryAgent.deduplicate_and_load_page_content(
+                search_results=brave_search_results, 
+                load_full_page_content=load_full_page_content
+            )
+        
+        return {
+            'search_results': brave_search_results
+        }
+
+    
     def build_agent(self,):
         graph_builder = StateGraph(AgentState)
         
-        graph_builder.set_node('search_query', self._agent_node)
+        graph_builder.add_node('search_query', self._agent_node)
+        graph_builder.add_node('web_search', self.perform_web_research)
+        graph_builder.add_edge('search_query', 'web_search')
+        
         graph_builder.set_entry_point('search_query')
-        graph_builder.set_finish_point('search_query')
+        graph_builder.set_finish_point('web_search')
         
         query_agent = graph_builder.compile()
         
@@ -82,4 +168,4 @@ class SearchQueryAgent(BaseAgent):
     @classmethod
     def create_agent(cls, model_name: str = "gpt-4o"):
         agent = cls(model_name=model_name)
-        return agent.build__agent()
+        return agent.build_agent()
