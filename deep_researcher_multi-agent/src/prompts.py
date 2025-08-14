@@ -90,3 +90,19 @@ Creates a research plan with the following items:
 - Adapt structure to query type (comparative/exploratory/problem-solving).
 - Do not use abbreviations
 """
+
+
+
+search_query_generation_prompt="""You are an expert technical writer, helping to generate search queries for research report on a topic given a plan.
+
+The report will be focused on the following topic:
+{topic}
+
+Your goal is to generate {number_of_queries} search queries that will help gather comprehensive information for this specific research plan: {research_plan}.
+
+The query should:
+
+1. Be related to the topic
+2. Help satisfy the requirements specified in the report organization
+
+Make the query specific, detailed and inquisitve enough to find high-quality, relevant sources while covering the breadth needed for the report structure."""

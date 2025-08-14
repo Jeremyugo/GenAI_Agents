@@ -5,4 +5,5 @@ from langgraph.graph import MessagesState
 class AgentState(MessagesState):
     user_request: Annotated[list, "The user's research request"]
     todos: Annotated[list[str], "List of research tasks"]
+    search_queries: Annotated[list[str], "List of web search queries"]
     next: Annotated[str, "The next agent to call"]

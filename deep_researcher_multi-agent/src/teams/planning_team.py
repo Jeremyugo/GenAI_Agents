@@ -14,7 +14,7 @@ from langchain_openai import ChatOpenAI
 
 
 def planning_node(state: AgentState) -> Command[Literal['supervisor']]:
-    planning_agent = PlanningAgent.create_planning_agent()
+    planning_agent = PlanningAgent.create_agent()
     result = planning_agent.invoke(state)
 
     todo_strings = [todo.todo for todo in result['todos']]

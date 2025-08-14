@@ -4,6 +4,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from src.state import AgentState
 from src.prompts import research_planner_system_prompt
+from src.utils import BaseAgent
 
 from typing import Annotated
 from langchain_core.prompts import ChatPromptTemplate
@@ -23,7 +24,7 @@ class TodoList(BaseModel):
 
 
 
-class PlanningAgent:
+class PlanningAgent(BaseAgent):
     def __init__(self, model_name: str = "gpt-4o"):
         self.model = ChatOpenAI(model=model_name)
         self.prompt = ChatPromptTemplate.from_messages(
@@ -36,7 +37,7 @@ class PlanningAgent:
         self.chain = self.prompt | self.model.with_structured_output(TodoList)
           
     
-    def _planning_agent(self, state: AgentState):
+    def _agent_node(self, state: AgentState):
         todos = self.chain.invoke(
             {
                 'topic': state['messages']
@@ -48,10 +49,10 @@ class PlanningAgent:
         }
         
     
-    def build_planning_agent(self,):
+    def build_agent(self,):
         graph_builder = StateGraph(AgentState)
 
-        graph_builder.add_node('planning_agent', self._planning_agent)
+        graph_builder.add_node('planning_agent', self._agent_node)
         graph_builder.set_entry_point('planning_agent')
         graph_builder.set_finish_point('planning_agent')
 
@@ -61,7 +62,7 @@ class PlanningAgent:
     
         
     @classmethod
-    def create_planning_agent(cls, model_name: str = "gpt-4o"):
+    def create_agent(cls, model_name: str = "gpt-4o"):
         agent = cls(model_name=model_name)
-        return agent.build_planning_agent()
+        return agent.build__agent()
         
