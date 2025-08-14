@@ -38,8 +38,15 @@ class Queries(BaseModel):
     )
     
 
-class SearchQueryAgent(BaseAgent):
-    def __init__(self, model_name: str = "gpt-4o", number_of_queries: int = 3):
+class ResearchAgent(BaseAgent):
+    def __init__(
+            self, 
+            model_name: str = "gpt-4o", 
+            number_of_queries: int = 3,
+            load_full_page_content: bool = False
+        ):
+        
+        self.load_full_page_content = load_full_page_content
         self.number_of_queries = number_of_queries
         self.model = ChatOpenAI(model=model_name)
         self.prompt = ChatPromptTemplate.from_messages(
@@ -85,8 +92,7 @@ class SearchQueryAgent(BaseAgent):
     
     
     
-    @staticmethod
-    async def brave_search_async(queries: list[str]) -> list:
+    async def brave_search_async(self, queries: list[str]) -> list:
         async def search(query):
             while True:
                 try:
@@ -99,51 +105,44 @@ class SearchQueryAgent(BaseAgent):
         return [await search(q) or await asyncio.sleep(0.5) for q in queries]
     
     
-    @staticmethod
-    async def load_with_real_timeout(url: str, timeout: float = 2.0):
+    async def load_with_real_timeout(self, url: str, timeout: float = 2.0):
         try:
             return await asyncio.wait_for(asyncio.to_thread(WebBaseLoader(url).load), timeout)
         except (asyncio.TimeoutError, Exception):
             return []
 
 
-    @staticmethod
-    async def load_all_fast(urls: list[str]):
+    async def load_all_fast(self, urls: list[str]):
         results = []
         for url in urls:
-            docs = await SearchQueryAgent.load_with_real_timeout(url)
+            docs = await self.load_with_real_timeout(url)
             results.extend(docs)
         return results
 
 
-    @staticmethod
-    async def deduplicate_and_load_page_content(search_results: list[str], load_full_page_content: bool = False):
+    async def deduplicate_and_load_page_content(self, search_results: list[str]):
         search_results = [ast.literal_eval(result) for result in search_results]
         search_results = [item for sublist in search_results for item in sublist]
         
-        if load_full_page_content:
+        if self.load_full_page_content:
             unique_links = []
             
             for web_result in search_results:
                 if web_result['link'] not in unique_links:
                     unique_links.append(web_result['link'])
                     
-            docs = await SearchQueryAgent.load_all_fast(unique_links)
+            docs = await self.load_all_fast(unique_links)
             return docs
         
         return search_results
     
     
-    @staticmethod
-    async def perform_web_research(state: AgentState, load_full_page_content: bool = False):
+    async def perform_web_research(self, state: AgentState):
         
         generated_search_queries = state['search_queries']
         
-        brave_search_results = await SearchQueryAgent.brave_search_async(generated_search_queries)
-        brave_search_results = await SearchQueryAgent.deduplicate_and_load_page_content(
-                search_results=brave_search_results, 
-                load_full_page_content=load_full_page_content
-            )
+        brave_search_results = await self.brave_search_async(generated_search_queries)
+        brave_search_results = await self.deduplicate_and_load_page_content(search_results=brave_search_results)
         
         return {
             'search_results': brave_search_results
@@ -166,6 +165,15 @@ class SearchQueryAgent(BaseAgent):
     
     
     @classmethod
-    def create_agent(cls, model_name: str = "gpt-4o"):
-        agent = cls(model_name=model_name)
+    def create_agent(
+            cls, 
+            model_name: str = "gpt-4o", 
+            number_of_queries: int = 3,
+            load_full_page_content: bool = False
+        ):
+        agent = cls(
+                model_name=model_name,
+                number_of_queries=number_of_queries,
+                load_full_page_content=load_full_page_content
+            )
         return agent.build_agent()
