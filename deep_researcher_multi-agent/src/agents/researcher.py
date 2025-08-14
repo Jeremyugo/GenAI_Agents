@@ -3,8 +3,10 @@ import os
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+import re
 import ast
 import asyncio
+import unicodedata
 
 from pydantic import BaseModel, Field
 
@@ -118,6 +120,16 @@ class ResearchAgent(BaseAgent):
             docs = await self.load_with_real_timeout(url)
             results.extend(docs)
         return results
+    
+    
+    def clean_text(self, text: str) -> str:
+        text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+        text = re.sub(r'[^\x00-\x7F]+', '', text)        # Remove non-ASCII
+        text = re.sub(r'\n+', '\n', text)                # Collapse multiple newlines
+        text = re.sub(r'[ \t]+', ' ', text)              # Collapse spaces/tabs
+        text = re.sub(r' *\n *', '\n', text)             # Trim space around newlines
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        return '\n'.join(lines)
 
 
     async def deduplicate_and_load_page_content(self, search_results: list[str]):
@@ -128,7 +140,7 @@ class ResearchAgent(BaseAgent):
             unique_links = {web_result['link'] for web_result in search_results}
                     
             docs = await self.load_all_fast(unique_links)
-            doc_lookup = {doc.metadata['source']: doc.page_content for doc in docs}
+            doc_lookup = {doc.metadata['source']: self.clean_text(doc.page_content) for doc in docs}
             
             for result in search_results:
                 source = result['link']
