@@ -125,14 +125,14 @@ class ResearchAgent(BaseAgent):
         search_results = [item for sublist in search_results for item in sublist]
         
         if self.load_full_page_content:
-            unique_links = []
-            
-            for web_result in search_results:
-                if web_result['link'] not in unique_links:
-                    unique_links.append(web_result['link'])
+            unique_links = {web_result['link'] for web_result in search_results}
                     
             docs = await self.load_all_fast(unique_links)
-            return docs
+            doc_lookup = {doc.metadata['source']: doc.page_content for doc in docs}
+            
+            for result in search_results:
+                source = result['link']
+                result['page_content'] = doc_lookup.get(source, '')
         
         return search_results
     
