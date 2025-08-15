@@ -109,23 +109,56 @@ Make the query specific, detailed and inquisitve enough to find high-quality, re
 
 
 writing_planner_prompt = """
-You are an advanced Research Report Structuring Agent designed to generate a detailed, logical, and tailored outline for a research report based on the provided research topic and the search queries used to gather information. Your goal is to create a coherent and comprehensive structure that aligns with the depth and breadth of the research, ensuring all key themes are covered in a systematic manner.
+You are an advanced Research Report Structuring Agent that generates a clear, engaging, and well-organized outline for a research report based on the provided topic and search queries.
+
+### Goals:
+- Produce a structure with **no more than 9 main sections** (including Introduction and Conclusion).
+- Use **natural, human-like language** that flows smoothly, avoiding mechanical or overly formal phrasing.
+- Ensure the outline is cohesive, with each section leading naturally to the next.
+- Keep the report easy to follow while covering all the main themes from the search queries.
 
 ### Instructions:
-1. **Analyze the Research Topic**: Identify the core subject, scope, and key focus areas.
-2. **Analyze the Search Queries**: Extract the major themes, sub-topics, and implied depth of research from the queries.
-3. **Dynamically Structure the Report**:
-   - Adapt the structure to the type of research (e.g., technical, analytical, case-study-driven, or policy-focused).
-   - Prioritize logical flow: introduction → background → key themes → case studies/evidence → implications → future directions → conclusion.
-   - Include subsections where necessary to break down complex topics.
-4. **Ensure Coverage**:
-   - All major themes from the search queries must be represented.
-   - Balance theoretical, practical, and ethical dimensions if applicable.
-5. **Output Format**:
-   - Use clear hierarchical headings (e.g., `1.`, `1.1`, `1.1.1`).
-   - Include a brief description (1-2 sentences) under each section/subsection explaining its purpose/content.
+1. **Understand the Topic**: Identify the subject, scope, and key angles of the research.
+2. **Interpret the Queries**: Extract the core themes and subtopics implied by the queries.
+3. **Create the Structure**:
+   - Arrange sections logically so the narrative flows (e.g., introduction → background → key themes → current state → future outlook → conclusion).
+   - Merge overlapping ideas when possible to maintain a clean, non-repetitive structure.
+   - Include subsections only when they clarify complex ideas or improve organization.
+4. **Keep the Tone Natural**:
+   - Write section and subsection descriptions as if explaining the plan to a colleague.
+   - Use concise, plain language without jargon unless necessary.
+5. **Ensure Coverage**:
+   - Every major theme from the queries should be represented somewhere in the outline.
+   - Include historical context, present-day relevance, and forward-looking elements if applicable.
 
-### Example Output Structure (Tailored to AI in the 21st Century):
+### Output Format:
+- Use hierarchical numbering (e.g., `1.`, `1.1`, `1.1.1`).
+- Each section/subsection should have a **short 1–2 sentence description** in natural, flowing language.
+
+### Example Output Structure:
+<Example>
+1. **Introduction**
+   - Sets the stage for the topic, explains its importance, and outlines what the report will cover.
+2. **How It Started**
+   - Describes the origins and early development of the subject.
+3. **Major Milestones**
+   - Highlights significant events or turning points that shaped the subject’s evolution.
+4. **Key Themes and Influences**
+   - Breaks down the main drivers, trends, and forces affecting the topic.
+5. **Case Studies or Evidence**
+   - Presents real-world examples, data, or research that illustrate the main points.
+6. **Current Landscape**
+   - Describes the present state, including opportunities, challenges, and ongoing debates.
+7. **Emerging Trends**
+   - Discusses what’s new, developing, or changing in the field.
+8. **Future Outlook**
+   - Outlines possible directions, predictions, or scenarios.
+9. **Conclusion**
+   - Summarizes the main takeaways and reflects on the topic’s lasting significance.
+</Example>
+
+
+<Example>
 1. **Introduction**
    - Overview of AI and its significance in the 21st century.
    - Scope and objectives of the report.
@@ -152,18 +185,73 @@ You are an advanced Research Report Structuring Agent designed to generate a det
 8. **Conclusion**
    - Summary of AI's transformative potential.
    - Recommendations for future research/policy.
+</Example>
 
-### Dynamic Adaptation Rules:
-- If the topic is technical (e.g., "AI in healthcare"), emphasize methodologies, case studies, and empirical results.
-- If the topic is policy-focused (e.g., "AI regulations"), prioritize frameworks, comparative analysis, and governance models.
-- Adjust depth based on query complexity (e.g., add subsections for detailed themes like "NLP advancements").
-- Merge overlapping themes from queries into unified sections.
-
-### Input for This Task:
+### Input:
 - Research Topic: "{topic}"
 - Research Queries: {queries}
+"""
 
-Now, generate a tailored report structure for the above topic and queries, following the guidelines.
+
+main_section_prompt = """As an expert research assistant, write a comprehensive main section for a research report using IEEE citation style.
+    
+RESEARCH TOPIC: {topic}
+MAIN SECTION TITLE: {title}
+SECTION DESCRIPTION: {description}
+SUBSECTIONS TO COVER: {subsections}
+
+{sources}
+
+Guidelines:
+1. Use IEEE citation style with numbered references in square brackets: [1], [2], etc.
+2. Citations appear as superscript numbers in text: The concept was first introduced^[1].
+3. For direct quotes: "The exact phrase"^[3]
+4. Multiple citations: Several studies^[1][3][5] have shown...
+5. Reference list format:
+   [1] A. Author, "Title," Journal, vol. x, no. x, pp. xxx-xxx, Year.
+   [2] B. Author, Book Title, xth ed. City: Publisher, Year.
+6. Websites:
+   [3] C. Author, "Page Title," Website, Year. [Online]. Available: URL
+7. List references in order of appearance (not alphabetically)
+8. Include all references used at the end under "References"
+
+Output format:
+1. Substantive content with IEEE citations
+2. Closing "### References" section with properly formatted IEEE references
+3. Example citation: Early research^[2] demonstrated...
+4. Example reference:
+   [2] J. Smith, "Football History," J. Sports Hist., vol. 12, no. 3, pp. 45-67, 2020.
+"""
+
+
+subsection_prompt = """As a meticulous research assistant, write a focused subsection using IEEE citation style.
+
+Context:
+RESEARCH TOPIC: {topic}
+PARENT SECTION: {parent_title}
+
+Current Subsection:
+TITLE: {title}
+DESCRIPTION: {description}
+
+{sources}
+
+IEEE Requirements:
+1. Use numbered citations in square brackets: [1]
+2. Superscript format for in-text citations: Previous work^[4] shows...
+3. Multiple citations: Recent studies^[2][5] indicate...
+4. Reference list format:
+   [1] A. Researcher, "Paper Title," Conf. Name, pp. xx-xx, Year.
+   [2] B. Writer, "Web Article," Website. [Online]. Available: URL
+5. List references in citation order (not alphabetical)
+6. Place all references under "#### References"
+
+Output format:
+1. Focused content with IEEE citations
+2. Closing references section
+3. Example: The methodology^[3] was...
+4. Example reference:
+   [3] R. Johnson, Med. Football Games. London: Sports Press, 2018.
 """
 
 
