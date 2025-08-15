@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 
 class BaseAgent(ABC):
-    @abstractmethod
+   
     def _agent_node(self):
         """The core node logic."""
         pass

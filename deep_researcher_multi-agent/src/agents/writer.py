@@ -123,11 +123,11 @@ class WritingAgent(BaseAgent):
             title = source.get('title', 'Untitled Source')
             url = source.get('link', '#')
             snippet = source.get('snippet', '')
-            content = sources.get('page_content', '')
+            content = source.get('page_content', '')
             
             content_preview = ""
             if content:
-                content_preview = (content[:10_000] + '...') if len(content) > 10_000 else content
+                content_preview = (content[:400] + '...') if len(content) > 400 else content
             elif snippet:
                 content_preview = snippet
             
@@ -138,7 +138,7 @@ class WritingAgent(BaseAgent):
         return formatted
     
     
-    async def generate_full_report(self, state: AgentState):
+    async def generate_report_draft(self, state: AgentState):
         """
         Coordinates the writing process with source integration
         """
@@ -152,7 +152,7 @@ class WritingAgent(BaseAgent):
             "subsections": RunnablePassthrough(),
             "topic": RunnablePassthrough(),
             "sources": RunnablePassthrough()}
-            | main_section_prompt
+            | ChatPromptTemplate.from_template(main_section_prompt)
             | self.model
             | StrOutputParser()
         )
@@ -163,7 +163,7 @@ class WritingAgent(BaseAgent):
             "description": RunnablePassthrough(),
             "topic": RunnablePassthrough(),
             "sources": RunnablePassthrough()}
-            | subsection_prompt
+            | ChatPromptTemplate.from_template(subsection_prompt)
             | self.model
             | StrOutputParser()
         )
@@ -221,7 +221,44 @@ class WritingAgent(BaseAgent):
                     "sources": formatted_sub_sources
                 })
                 
-                report_content[section.title].subsections[subsection.title] = sub_content
+                report_content[section.title]['subsections'][subsection.title] = sub_content
                 subsection_contents.append(f"### {subsection.title}\n\n{sub_content}")
                 
+            full_section = f"## {section.title}\n\n{main_content}"
+            if subsection_contents:
+                full_section += "\n\n" + "\n\n".join(subsection_contents)
                 
+            full_report.append(full_section)
+            
+
+        bibliography = "## References\n\n"
+        for (title, url), idx in sorted(all_sources.items(), key=lambda x: x[1]):
+            bibliography += f"{idx}. [{title}]({url})\n"
+        
+        full_report.append(bibliography)
+        
+        return {
+            'full_report_draft': "\n\n".join(full_report)
+        }
+        
+        
+    def build_agent(self):
+        graph_builder = StateGraph(AgentState)
+        
+        graph_builder.add_node('writing_plan', self.generate_writing_plan)
+        graph_builder.add_node('draft_report', self.generate_report_draft)
+        
+        graph_builder.add_edge('writing_plan', 'draft_report')
+        
+        graph_builder.set_entry_point('writing_plan')
+        graph_builder.set_finish_point('draft_report')
+        
+        writing_agent = graph_builder.compile()
+        
+        return writing_agent
+    
+    
+    @classmethod
+    def create_agent(cls, model_name: str = "gpt-4o"):
+        agent = cls(model_name=model_name)
+        return agent.build_agent()
