@@ -2,60 +2,20 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+import re
+from collections import defaultdict
+from typing import List, Dict, Optional
+
 from src.state import AgentState
 from src.prompts import writing_planner_prompt, main_section_prompt, subsection_prompt
 from src.utils import BaseAgent
 
-from typing import Annotated
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
 
-import re
-from pydantic import BaseModel, Field
-from typing import List, Dict
-
-
-from typing import List, Dict, Optional, Tuple
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-import re
-import json
-from collections import defaultdict
-import os
-
-
-class Subsection(BaseModel):
-    number: str = Field(description="Hierarchical number, e.g., '1.1'., '2.3.1'.")
-    title: str = Field(description="Title of the subsection.")
-    description: List[str] = Field(
-        description="A short, natural-sounding 1–2 sentence summary of this subsection.",
-        min_items=1
-    )
-
-class Section(BaseModel):
-    number: str = Field(description="Hierarchical number, e.g., '1'., '2.'")
-    title: str = Field(description="Title of the section.")
-    description: List[str] = Field(
-        description="A short, natural-sounding 1–2 sentence summary of this section.",
-        min_items=1
-    )
-    subsections: List[Subsection] = Field(
-        default_factory=list,
-        description="Optional subsections for this section."
-    )
-
-class WritingPlan(BaseModel):
-    sections: List[Section] = Field(
-        description="""
-        List of not more than 9 sections (including Introduction and Conclusion) in logical order. 
-        The shorter the better** — aim to pack related ideas into fewer sections unless splitting them clearly improves clarity.
-        """,
-        min_items=1,
-        max_items=9
-    )
 
 
 class WritingAgent(BaseAgent):
@@ -68,8 +28,75 @@ class WritingAgent(BaseAgent):
             ]
         )
         
-        self.chain = self.prompt | self.model.with_structured_output(WritingPlan)
+        self.chain = self.prompt | self.model | StrOutputParser()
 
+    
+    def split_into_sections(self, research_plan: str) -> List[Dict[str, str]]:
+        """
+        Parse a numbered plan like:
+        1. **Title**  Description...
+        1.1. **Sub Title** — Description...
+        Returns: [{"title": "1. Title", "description": [...], "subsections": [{"title": "1.1. Sub", ...}, ...]}, ...]
+        """
+        sections: List[Dict[str, object]] = []
+        current_main: Optional[Dict[str, object]] = None
+
+        # Dash matcher: optional em/en/hyphen after subsection title
+        dash_opt = r'(?:[\u2014\u2013-]\s*)?'  # — or – or -
+
+        for raw in research_plan.splitlines():
+            line = raw.strip()
+            if not line:
+                continue
+
+            # Main section: 1. **Title** [desc...]
+            m_main = re.match(r'^(\d+)\.\s+\*\*(.+?)\*\*\s*(.*)$', line)
+            if m_main:
+                # push previous main
+                if current_main:
+                    sections.append(current_main)
+                num = m_main.group(1).strip()
+                title_txt = m_main.group(2).strip()
+                desc_txt = m_main.group(3).strip()
+                current_main = {
+                    "title": f"{num}. {title_txt}",
+                    "description": [desc_txt] if desc_txt else [],
+                    "subsections": []
+                }
+                continue
+
+            # Subsection: 1.1. **Title** — desc...
+            m_sub = re.match(rf'^(\d+\.\d+)\.\s+\*\*(.+?)\*\*\s*{dash_opt}(.*)$', line)
+            if m_sub and current_main:
+                sub_num = m_sub.group(1).strip()
+                sub_title = m_sub.group(2).strip()
+                sub_desc = m_sub.group(3).strip()
+                current_main["subsections"].append({
+                    "title": f"{sub_num}. {sub_title}",
+                    "description": [sub_desc] if sub_desc else []
+                })
+                continue
+
+            # Continuation lines → to last subsection if exists, else to main description
+            if current_main:
+                if current_main["subsections"]:
+                    last_sub = current_main["subsections"][-1]
+                    if last_sub["description"]:
+                        last_sub["description"][-1] += " " + line
+                    else:
+                        last_sub["description"].append(line)
+                else:
+                    if current_main["description"]:
+                        current_main["description"][-1] += " " + line
+                    else:
+                        current_main["description"].append(line)
+
+        if current_main:
+            sections.append(current_main)
+
+        # Cast for type checkers
+        return sections  # type: ignore[return-value]
+    
     
     def generate_writing_plan(self, state: AgentState):
         writing_plan = self.chain.invoke(
@@ -79,8 +106,10 @@ class WritingAgent(BaseAgent):
             }
         )
         
+        writing_plan = self.split_into_sections(writing_plan)
+        
         return {
-            'writing_plan': writing_plan.sections
+            'writing_plan': writing_plan
         }
   
   
@@ -174,7 +203,7 @@ class WritingAgent(BaseAgent):
         source_counter = 1
         
         for section in sections:
-            section_query = f"{section.title}: {' '.join(section.description)}"
+            section_query = f"{section['title']}: {' '.join(section['description'])}"
             
             section_sources = self.get_relevant_sources(search_results=search_results, query=section_query)
             formatted_sources = self.format_sources(sources=section_sources)
@@ -187,21 +216,21 @@ class WritingAgent(BaseAgent):
                     
             
             main_content = await main_section_chain.ainvoke({
-                "title": f"{section.number}: {section.title}",
-                "description": "\n".join(section.description),
-                "subsections": [sub.title for sub in section.subsections],
+                "title": f"{section['title']}",
+                "description": "\n".join(section['description']),
+                "subsections": [sub['title'] for sub in section['subsections']],
                 "topic": state['messages'],
                 "sources": formatted_sources
             })
             
-            report_content[section.title] = {
+            report_content[section['title']] = {
                 'main_content': main_content,
                 'subsections': {}
             }
             
             subsection_contents = []
-            for subsection in section.subsections:
-                sub_query = f"{section.title} {subsection.title} {' '.join(subsection.description)}"
+            for subsection in section['subsections']:
+                sub_query = f"{section['title']} {subsection['title']} {' '.join(subsection['description'])}"
 
                 sub_sources = self.get_relevant_sources(search_results=search_results, query=sub_query)
                 formatted_sub_sources = self.format_sources(sources=sub_sources)
@@ -214,23 +243,22 @@ class WritingAgent(BaseAgent):
                         
                 
                 sub_content = await subsection_chain.ainvoke({
-                    "parent_title": f"{section.number}: {section.title}",
-                    "title": f"{subsection.number}: {subsection.title}",
-                    "description": "\n".join(subsection.description),
+                    "parent_title": section["title"],
+                    "title": subsection["title"],
+                    "description": "\n".join(subsection["description"]),
                     "topic": state['messages'],
                     "sources": formatted_sub_sources
                 })
                 
-                report_content[section.title]['subsections'][subsection.title] = sub_content
-                subsection_contents.append(f"### {subsection.title}\n\n{sub_content}")
-                
-            full_section = f"## {section.title}\n\n{main_content}"
+                report_content[section["title"]]["subsections"][subsection["title"]] = sub_content
+                subsection_contents.append(f"### {subsection['title']}\n\n{sub_content}")
+            
+            full_section = f"## {section['title']}\n\n{main_content}"
             if subsection_contents:
                 full_section += "\n\n" + "\n\n".join(subsection_contents)
-                
-            full_report.append(full_section)
             
-
+            full_report.append(full_section)
+        
         bibliography = "## References\n\n"
         for (title, url), idx in sorted(all_sources.items(), key=lambda x: x[1]):
             bibliography += f"{idx}. [{title}]({url})\n"
