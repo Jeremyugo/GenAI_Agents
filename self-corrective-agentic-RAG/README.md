@@ -50,7 +50,7 @@ This creates a smarter system that retrieves better information and generates mo
 The biggest lesson i've learnt building Agentic systems is how important context engineering is. In summary:
 - The structure/flow of your agentic system is crucial to how scalable it can be
 - Understading when to use tool calls as opposed to graph nodes determines how deterministic your agentic system would be
-    - *Tool Calls* -> More deterministic
-    - *Graph Nodes* -> Less determistic 
+    - *Tool Calls* -> Less deterministic
+    - *Graph Nodes* -> More determistic 
 
 - Prompt Engineering is key to the behaviour of your agentic system. A minor change in prompt can drastically change how your agent(s) behave(s). The X/Twitter grok fiasco is a good example of this.
