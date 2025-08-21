@@ -10,6 +10,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
+from langgraph.types import interrupt, Command
 
 
 
@@ -31,8 +32,8 @@ class PlanningAgent(BaseAgent):
         
         self.research_plan_chain = self.research_plan_prompt | self.model | StrOutputParser()
         self.writing_plan_chain = self.writing_plan_prompt | self.model | StrOutputParser()
-          
-    
+        
+        
     def _agent_node(self, state: AgentState) -> AgentState:
         messages = state['messages']
         writing_plan_feedback = state.get('writing_plan_feedback', '')
@@ -54,17 +55,49 @@ class PlanningAgent(BaseAgent):
         return {
             'research_plan': research_plan,
             'writing_plan': writing_plan
-        }
+        }    
         
+        
+    def _feedback_node(self, state: AgentState):
+        """
+            Get Feedback on report plan
+        """
+        writing_plan = state['writing_plan']
+        
+        interrupt_message = f"""
+        Please provide feedback on the following report plan.
+        
+        {writing_plan}
+        
+        Does the report plan meet your needs? Plass 'true' to approve the report plan or provide feedback
+        to regenerate the report plan
+        """
+        
+        feedback = input(interrupt_message)
+        
+        if isinstance(feedback, str) and feedback.strip().lower() == 'true':
+            return Command(
+                update={},
+                goto='__end__' 
+            )
+        else:
+            return Command(goto=
+                "planning_agent", update={'writing_plan_feedback': feedback}
+            )
 
-    
-    
+
     def build_agent(self,):
         graph_builder = StateGraph(AgentState)
 
         graph_builder.add_node('planning_agent', self._agent_node)
+        graph_builder.add_node('get_feedback', self._feedback_node)
+        
         graph_builder.set_entry_point('planning_agent')
-        graph_builder.set_finish_point('planning_agent')
+        graph_builder.add_edge('planning_agent', 'get_feedback')
+        graph_builder.add_conditional_edges(
+            'get_feedback',
+            lambda state: state
+        )
 
         planner_agent = graph_builder.compile()
         
