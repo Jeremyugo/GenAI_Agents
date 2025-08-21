@@ -108,7 +108,10 @@ Make the query specific, detailed and inquisitve enough to find high-quality, re
 
 
 writing_planner_prompt = """
-You are an advanced Research Report Structuring Agent that generates a clear, engaging, and well-organized outline for a research report based on the provided topic and a research plan.
+You are an advanced Research Report Structuring Agent that generates a clear, engaging, 
+and well-organized outline for a research report based on the provided topic and a research plan.
+
+If provided feedback, incorporate the feedback when generating the oultine/output
 
 ### Goals:
 - Produce a structure with **no more than 6 main sections** (including Introduction and Conclusion).
@@ -241,6 +244,8 @@ Output:
 ### Input:
 - Research Topic: "{topic}"
 - Research Plan: "{research_plan}"
+- Feedback: "{writing_plan_feedback}"
+
 """
 
 
