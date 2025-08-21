@@ -3,51 +3,57 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from src.state import AgentState
-from src.prompts import research_planner_system_prompt
+from src.prompts import research_planner_system_prompt, writing_planner_prompt
 from src.utils import BaseAgent
 
-from typing import Annotated
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
-
-from pydantic import BaseModel, Field
-
-
-class Todo(BaseModel):
-    todo: Annotated[str, "The research plan"]
-
-class TodoList(BaseModel):
-    todos: list[Todo] = Field(
-        description="A list of all Todos"
-    )
+from langchain_core.output_parsers import StrOutputParser
 
 
 
 class PlanningAgent(BaseAgent):
     def __init__(self, model_name: str = "gpt-4o"):
         self.model = ChatOpenAI(model=model_name)
-        self.prompt = ChatPromptTemplate.from_messages(
+        self.research_plan_prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", research_planner_system_prompt),
                 ('human', "Here is the research topic: \n\n{topic}. Generate a research plan to explore the topic"),
             ]
         )
+        self.writing_plan_prompt = ChatPromptTemplate.from_messages(
+            [
+                ('system', writing_planner_prompt),
+                ('human', "Here is the research topic: \n\n{topic} and research plan: \n\n{research_plan}. Create well-organized sections.")
+            ]
+        )
         
-        self.chain = self.prompt | self.model.with_structured_output(TodoList)
+        self.research_plan_chain = self.research_plan_prompt | self.model | StrOutputParser()
+        self.writing_plan_chain = self.writing_plan_prompt | self.model | StrOutputParser()
           
     
-    def _agent_node(self, state: AgentState):
-        todos = self.chain.invoke(
+    def _agent_node(self, state: AgentState) -> AgentState:
+        research_plan = self.research_plan_chain.invoke(
             {
                 'topic': state['messages']
             }
         )
         
+        writing_plan = self.writing_plan_chain.invoke(
+            {
+                'topic': state['messages'],
+                'research_plan': research_plan
+            }
+        )
+        
         return {
-            'todos': todos.todos
+            'research_plan': research_plan,
+            'writing_plan': writing_plan
         }
         
+
+    
     
     def build_agent(self,):
         graph_builder = StateGraph(AgentState)
