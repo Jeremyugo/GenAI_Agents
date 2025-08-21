@@ -136,6 +136,7 @@ If provided feedback, incorporate the feedback when generating the oultine/outpu
 - Include historical context, current uses, and future outlook if relevant.
 - Format with hierarchical numbering (1., 1.1, 1.1.1).
 - Each section/subsection gets a 1–2 sentence description.
+- Separate each section using '--------------------------------------------------------------------------------' as shown in the examples below
 
 ### Output Format:
 - Use hierarchical numbering (e.g., `1.`, `1.1`, `1.1.1`).
@@ -287,94 +288,23 @@ Output format:
 """
 
 
-subsection_prompt = """As a meticulous research assistant, write a focused subsection using IEEE citation style.
+report_draft_prompt = """You are an expert research writer. Write a section of a research report based on the following topic, plan and sources.
 
-Context:
-RESEARCH TOPIC: {topic}
-PARENT SECTION: {parent_title}
+TOPIC:
+{topic}
 
-Current Subsection:
-TITLE: {title}
-DESCRIPTION: {description}
+SECTION PLAN AND SOURCES:
+{section_data}
 
-{sources}
+INSTRUCTIONS:
+1. Write a comprehensive section following the provided plan exactly
+2. Use all the provided sources to support your writing
+3. Cite sources in IEEE format using numbers like [1], [2], etc.
+4. Ensure the writing is academic, well-structured, and flows naturally
+5. Include all key points from the content plan
+6. Maintain formal academic tone throughout
+7. Use transition sentences to connect ideas smoothly
+8. Do not add any information not supported by the provided sources
+9. Only cite sources that are actually used in the text
 
-IEEE Requirements:
-1. Use numbered citations in square brackets: [1]
-2. Superscript format for in-text citations: Previous work^[4] shows...
-3. Multiple citations: Recent studies^[2][5] indicate...
-4. Reference list format:
-   [1] A. Researcher, "Paper Title," Conf. Name, pp. xx-xx, Year.
-   [2] B. Writer, "Web Article," Website. [Online]. Available: URL
-5. List references in citation order (not alphabetical)
-6. Place all references under "#### References"
-
-Output format:
-1. Focused content with IEEE citations
-2. Closing references section
-3. Example: The methodology^[3] was...
-4. Example reference:
-   [3] R. Johnson, Med. Football Games. London: Sports Press, 2018.
-"""
-
-
-main_section_prompt = """As an expert research assistant, write a comprehensive main section for a research report using IEEE citation style.
-    
-RESEARCH TOPIC: {topic}
-MAIN SECTION TITLE: {title}
-SECTION DESCRIPTION: {description}
-SUBSECTIONS TO COVER: {subsections}
-
-{sources}
-
-Guidelines:
-1. Use IEEE citation style with numbered references in square brackets: [1], [2], etc.
-2. Citations appear as superscript numbers in text: The concept was first introduced^[1].
-3. For direct quotes: "The exact phrase"^[3]
-4. Multiple citations: Several studies^[1][3][5] have shown...
-5. Reference list format:
-   [1] A. Author, "Title," Journal, vol. x, no. x, pp. xxx-xxx, Year.
-   [2] B. Author, Book Title, xth ed. City: Publisher, Year.
-6. Websites:
-   [3] C. Author, "Page Title," Website, Year. [Online]. Available: URL
-7. List references in order of appearance (not alphabetically)
-8. Include all references used at the end under "References"
-
-Output format:
-1. Substantive content with IEEE citations
-2. Closing "### References" section with properly formatted IEEE references
-3. Example citation: Early research^[2] demonstrated...
-4. Example reference:
-   [2] J. Smith, "Football History," J. Sports Hist., vol. 12, no. 3, pp. 45-67, 2020.
-"""
-
-
-subsection_prompt = """As a meticulous research assistant, write a focused subsection using IEEE citation style.
-
-Context:
-RESEARCH TOPIC: {topic}
-PARENT SECTION: {parent_title}
-
-Current Subsection:
-TITLE: {title}
-DESCRIPTION: {description}
-
-{sources}
-
-IEEE Requirements:
-1. Use numbered citations in square brackets: [1]
-2. Superscript format for in-text citations: Previous work^[4] shows...
-3. Multiple citations: Recent studies^[2][5] indicate...
-4. Reference list format:
-   [1] A. Researcher, "Paper Title," Conf. Name, pp. xx-xx, Year.
-   [2] B. Writer, "Web Article," Website. [Online]. Available: URL
-5. List references in citation order (not alphabetical)
-6. Place all references under "#### References"
-
-Output format:
-1. Focused content with IEEE citations
-2. Closing references section
-3. Example: The methodology^[3] was...
-4. Example reference:
-   [3] R. Johnson, Med. Football Games. London: Sports Press, 2018.
-"""
+Write the section now:"""
