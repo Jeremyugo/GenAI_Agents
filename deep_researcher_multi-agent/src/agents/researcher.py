@@ -1,17 +1,16 @@
 import sys
 import os
-from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-
 import re
 import ast
 import asyncio
 import unicodedata
+from pathlib import Path
+from typing import List
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from pydantic import BaseModel, Field
-
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnableLambda
 from langchain_openai import ChatOpenAI
 from langchain_community.tools import BraveSearch
 from langchain_community.document_loaders import WebBaseLoader
@@ -62,38 +61,15 @@ class ResearchAgent(BaseAgent):
         )
 
         self.chain = self.prompt | self.model.with_structured_output(Queries)
-        
-        
-    async def research_and_format_sources(self, input_dict) -> str:
-        section = input_dict['section']
-        web_search_queries = await self.chain.ainvoke(
-            {
-                'number_of_queries': input_dict['number_of_queries'],
-                'topic': input_dict['topic'],
-                'section': section
-            }
-        )
-        
-        web_search_queries = [
-            query.search_query for query in web_search_queries.search_queries
-        ]
-        print(f"Length of Query: {len(web_search_queries)}")
-        
-        brave_search_results = await self.brave_search_async(web_search_queries)
-        formatted_sources = await self.deduplicate_and_format_sources(brave_search_results)
-        
-        print(f"Done formatting")
-            
-        return f"Research Plan:\n\n{section}\n\n{formatted_sources}"
     
     
-    async def generate_sources(self, input_dict: dict) -> list[str]:
+    async def generate_sources(self, state: dict) -> list[str]:
         results = []
-        for section in input_dict['writing_plan']:
+        for section in state['writing_plan']:
             web_search_queries = await self.chain.ainvoke(
                 {
-                    'number_of_queries': input_dict['number_of_queries'],
-                    'topic': input_dict['topic'],
+                    'number_of_queries': state['number_of_queries'],
+                    'topic': state['topic'],
                     'section': section
                 }
             )
@@ -193,26 +169,13 @@ class ResearchAgent(BaseAgent):
         except (asyncio.TimeoutError, Exception):
             return []
 
-
+    
     async def load_all_fast(self, urls: list[str]):
-        results = []
-        for url in urls:
-            docs = await self.load_with_real_timeout(url)
-            results.extend(docs)
-        return results
+        tasks = [self.load_with_real_timeout(url) for url in urls]
+        results = await asyncio.gather(*tasks)
+        return [doc for sublist in results for doc in sublist]
     
-    
-    async def perform_web_research(self, state: AgentState):
-        
-        generated_search_queries = state['search_queries']
-        
-        brave_search_results = await self.brave_search_async(generated_search_queries)
-        brave_search_results = await self.deduplicate_and_load_page_content(search_results=brave_search_results)
-        
-        return {
-            'search_results': brave_search_results
-        }
-        
+
         
     async def _agent_node(self, state: AgentState) -> AgentState:
         separator = "-"*80
