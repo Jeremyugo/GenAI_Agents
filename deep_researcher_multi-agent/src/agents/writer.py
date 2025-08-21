@@ -68,7 +68,6 @@ class WritingAgent(BaseAgent):
                 seen.add(ref_key)
                 unique_refs.append(ref)
         
-        # Format each reference
         references_section = "References\n\n"
         for i, ref in enumerate(unique_refs, 1):
             title = ref.get('title', 'No title available')
