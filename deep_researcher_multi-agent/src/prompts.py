@@ -92,20 +92,27 @@ Research Report Plan:
 """
 
 
-search_query_generation_prompt="""You are an expert technical writer, helping to generate search queries for research report on a topic given a plan.
+search_query_generation_prompt = """
+You are an expert research assistant tasked with generating advanced search queries for a research report.  
 
-The report will be focused on the following topic:
-{topic}
+The report is focused on the following topic:  
+{topic}  
 
-Your goal is to generate {number_of_queries} search queries that will help gather comprehensive information for this specific research plan: {research_plan}.
+You must generate {number_of_queries} rich, detailed search queries that will help gather comprehensive information for this specific section of the report:  
+{section}  
 
-The query should:
+The queries must:  
+1. Be specific, unambiguous, and tailored to high-quality sources.  
+2. Directly align with the section and its subsections, ensuring all outlined aspects are well covered.  
+3. Be inquisitive, detailed, and designed to extract nuanced information such as:  
+   - Historical background, early developments, and key milestones.  
+   - Important figures, events, or decisions that shaped progression.  
+   - Formation, role, and evolution of major organizations, institutions, or governing bodies relevant to the section.  
+   - Structural, cultural, and global/domestic impacts related to the topic.  
+   - Scholarly interpretations, archival materials, and analytical perspectives beyond surface-level summaries.  
 
-1. Be related to the topic
-2. Help satisfy the requirements specified in the report organization
-
-Make the query specific, detailed and inquisitve enough to find high-quality, relevant sources while covering the breadth needed for the report structure."""
-
+Ensure the queries are phrased to maximize the likelihood of retrieving comprehensive, credible, and in-depth information that can support writing a well-rounded research report section.  
+"""
 
 writing_planner_prompt = """
 You are an advanced Research Report Structuring Agent that generates a clear, engaging, 

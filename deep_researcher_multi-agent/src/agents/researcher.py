@@ -22,7 +22,6 @@ from src.state import AgentState
 from src.utils import BaseAgent
 
 
-
 search_tool = BraveSearch.from_api_key(
     api_key=os.environ.get('BRAVE_SEARCH_API_KEY'),
     search_kwargs={'count': 5}
@@ -39,58 +38,133 @@ class Queries(BaseModel):
         description="List of search queries"
     )
     
-
+    
+    
 class ResearchAgent(BaseAgent):
     def __init__(
             self, 
             model_name: str = "gpt-4o", 
-            number_of_queries: int = 3,
-            load_full_page_content: bool = False
+            number_of_queries: int = 3
         ):
         
-        self.load_full_page_content = load_full_page_content
         self.number_of_queries = number_of_queries
         self.model = ChatOpenAI(model=model_name)
         self.prompt = ChatPromptTemplate.from_messages(
             [
                 ('system', search_query_generation_prompt),
-                ('human', "Search topic: \n\n {topic} \n\n Research Plan: \n\n {research_plan} \n\n Number of queries: \n\n{number_of_queries}")
+                ('human', (
+                        "This is the research topic: \n\n {topic} \n\n. "
+                        "Please generate \n\n{number_of_queries} web search queries that will provide enough information " 
+                        "needed to write this section of the report: \n\n {section} \n\n" 
+                    )
+                )
             ]
         )
 
         self.chain = self.prompt | self.model.with_structured_output(Queries)
-    
-    
-    def generate_batch_queries(self, input_dict):
-        return self.chain.batch([
+        
+        
+    async def research_and_format_sources(self, input_dict) -> str:
+        section = input_dict['section']
+        web_search_queries = await self.chain.ainvoke(
             {
                 'number_of_queries': input_dict['number_of_queries'],
                 'topic': input_dict['topic'],
-                'research_plan': plan_item
-            }
-            for plan_item in input_dict['research_plan_items']
-        ])
-    
-    
-    def _agent_node(self, state: AgentState):
-        generate_search_queries = RunnableLambda(self.generate_batch_queries)
-        generated_search_queries = generate_search_queries.invoke(
-            {
-                'number_of_queries': self.number_of_queries,
-                'topic': state['messages'],
-                'research_plan_items': state['todos']
+                'section': section
             }
         )
         
-        generated_search_queries = [
-            query.search_query 
-            for result in generated_search_queries 
-            for query in result.search_queries
+        web_search_queries = [
+            query.search_query for query in web_search_queries.search_queries
         ]
+        print(f"Length of Query: {len(web_search_queries)}")
         
-        return {
-            'search_queries': generated_search_queries
-        }
+        brave_search_results = await self.brave_search_async(web_search_queries)
+        formatted_sources = await self.deduplicate_and_format_sources(brave_search_results)
+        
+        print(f"Done formatting")
+            
+        return f"Research Plan:\n\n{section}\n\n{formatted_sources}"
+    
+    
+    async def generate_sources(self, input_dict: dict) -> list[str]:
+        results = []
+        for section in input_dict['writing_plan']:
+            web_search_queries = await self.chain.ainvoke(
+                {
+                    'number_of_queries': input_dict['number_of_queries'],
+                    'topic': input_dict['topic'],
+                    'section': section
+                }
+            )
+        
+            web_search_queries = [
+                query.search_query for query in web_search_queries.search_queries
+            ]
+            
+            brave_search_results = await self.brave_search_async(web_search_queries)
+            formatted_sources = await self.deduplicate_and_format_sources(brave_search_results)
+            
+            results.append(f"Research Plan:\n\n{section}\n\n{formatted_sources}")
+
+        return results
+        
+        
+        
+    def clean_text(self, text: str, max_tokens_per_source: int = 1_000) -> str:
+        text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+        text = re.sub(r'[^\x00-\x7F]+', '', text)        # Remove non-ASCII
+        text = re.sub(r'\n+', '\n', text)                # Collapse multiple newlines
+        text = re.sub(r'[ \t]+', ' ', text)              # Collapse spaces/tabs
+        text = re.sub(r' *\n *', '\n', text)             # Trim space around newlines
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        text = '\n'.join(lines)
+        
+        char_limit = max_tokens_per_source * 4
+        raw_content = text or ""
+
+        if len(raw_content) > char_limit:
+            raw_content = raw_content[:char_limit] + "... [truncated]"
+            raw_content = f"Full source content limited to {max_tokens_per_source} tokens: {raw_content}\n\n"
+        
+        return raw_content
+    
+    
+    async def deduplicate_and_format_sources(self, search_results: list[str]) -> str:
+        try:
+            parsed_results = []
+            for result in search_results:
+                try:
+                    if result and result != "[]":
+                        parsed = ast.literal_eval(result)
+                        parsed_results.append(parsed)
+                except (ValueError, SyntaxError) as e:
+                    print(f"Failed to parse search result: {e}")
+                    continue
+            
+            if not parsed_results:
+                return "No sources found"
+                
+            search_results = [item for sublist in parsed_results for item in sublist]
+            
+            if not search_results:
+                return "No sources found after parsing"
+                
+            unique_sources = {web_result['link'] for web_result in search_results}
+            docs = await self.load_all_fast(unique_sources)
+            doc_lookup = {doc.metadata['source']: self.clean_text(doc.page_content) for doc in docs}
+            
+            formatted_text = "Sources: \n\n"
+            for i, result in enumerate(search_results, 1):
+                formatted_text += f"Source {i} - {result['title']}:\n===\n"
+                formatted_text += f"URL: {result['link']}\n===\n"
+                formatted_text += f"Most relevant content from source: {result['snippet']}\n===\n"
+                formatted_text += doc_lookup.get(result['link'], 'No content available')
+                
+            return formatted_text
+        except Exception as e:
+            print(f"Error in deduplicate_and_format_sources: {e}")
+            return "Error formatting sources"
     
     
     
@@ -98,13 +172,19 @@ class ResearchAgent(BaseAgent):
         async def search(query):
             while True:
                 try:
-                    return await search_tool.ainvoke(query)
+                    result = await search_tool.ainvoke(query)
+                    if result:
+                        return result
+                    await asyncio.sleep(0.5)
                 except Exception as e:
                     if "429" in str(e):
                         await asyncio.sleep(0.5)
                     else:
-                        raise
-        return [await search(q) or await asyncio.sleep(0.5) for q in queries]
+                        print(f"Error searching for {query}: {e}")
+                        return "[]"  
+
+        results = await asyncio.gather(*[search(q) for q in queries])
+        return results
     
     
     async def load_with_real_timeout(self, url: str, timeout: float = 2.0):
@@ -122,33 +202,6 @@ class ResearchAgent(BaseAgent):
         return results
     
     
-    def clean_text(self, text: str) -> str:
-        text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-        text = re.sub(r'[^\x00-\x7F]+', '', text)        # Remove non-ASCII
-        text = re.sub(r'\n+', '\n', text)                # Collapse multiple newlines
-        text = re.sub(r'[ \t]+', ' ', text)              # Collapse spaces/tabs
-        text = re.sub(r' *\n *', '\n', text)             # Trim space around newlines
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        return '\n'.join(lines)
-
-
-    async def deduplicate_and_load_page_content(self, search_results: list[str]):
-        search_results = [ast.literal_eval(result) for result in search_results]
-        search_results = [item for sublist in search_results for item in sublist]
-        
-        if self.load_full_page_content:
-            unique_links = {web_result['link'] for web_result in search_results}
-                    
-            docs = await self.load_all_fast(unique_links)
-            doc_lookup = {doc.metadata['source']: self.clean_text(doc.page_content) for doc in docs}
-            
-            for result in search_results:
-                source = result['link']
-                result['page_content'] = doc_lookup.get(source, '')
-        
-        return search_results
-    
-    
     async def perform_web_research(self, state: AgentState):
         
         generated_search_queries = state['search_queries']
@@ -159,17 +212,32 @@ class ResearchAgent(BaseAgent):
         return {
             'search_results': brave_search_results
         }
-
+        
+        
+    async def _agent_node(self, state: AgentState) -> AgentState:
+        separator = "-"*80
+        sections = state['writing_plan'].split(separator)
+        sections = [section.strip() for section in sections]
+        
+        generated_sources = await self.generate_sources(
+            {
+                'number_of_queries': self.number_of_queries,
+                'topic': state['messages'],
+                'writing_plan': sections
+            }
+        )
+        
+        return {
+            'writing_plan_and_sources': generated_sources
+        }
+        
     
-    def build_agent(self,):
+    def build_agent(self):
         graph_builder = StateGraph(AgentState)
         
-        graph_builder.add_node('search_query', self._agent_node)
-        graph_builder.add_node('web_search', self.perform_web_research)
-        graph_builder.add_edge('search_query', 'web_search')
-        
-        graph_builder.set_entry_point('search_query')
-        graph_builder.set_finish_point('web_search')
+        graph_builder.add_node('generate_sources', self._agent_node)
+        graph_builder.set_entry_point('generate_sources')
+        graph_builder.set_finish_point('generate_sources')
         
         query_agent = graph_builder.compile()
         
@@ -181,11 +249,9 @@ class ResearchAgent(BaseAgent):
             cls, 
             model_name: str = "gpt-4o", 
             number_of_queries: int = 3,
-            load_full_page_content: bool = False
         ):
         agent = cls(
                 model_name=model_name,
                 number_of_queries=number_of_queries,
-                load_full_page_content=load_full_page_content
             )
         return agent.build_agent()

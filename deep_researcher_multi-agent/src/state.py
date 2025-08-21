@@ -9,5 +9,6 @@ class AgentState(MessagesState):
     search_results: Annotated[list[list[str]], "The web search results"]
     writing_plan: Annotated[str, "List of report sections"]
     writing_plan_feedback: Annotated[str, "Feedback on the outline structure"]
+    writing_plan_and_sources: Annotated[list[str], "Section writing plan and resources"]
     full_report_draft: Annotated[str, "First report draft"]
     next: Annotated[str, "The next agent to call"]
