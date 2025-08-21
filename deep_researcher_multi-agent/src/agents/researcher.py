@@ -5,7 +5,7 @@ import ast
 import asyncio
 import unicodedata
 from pathlib import Path
-from typing import List
+
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
@@ -23,7 +23,7 @@ from src.utils import BaseAgent
 
 search_tool = BraveSearch.from_api_key(
     api_key=os.environ.get('BRAVE_SEARCH_API_KEY'),
-    search_kwargs={'count': 5}
+    search_kwargs={'count': 3}
 )
 
 
@@ -211,7 +211,7 @@ class ResearchAgent(BaseAgent):
     def create_agent(
             cls, 
             model_name: str = "gpt-4o", 
-            number_of_queries: int = 3,
+            number_of_queries: int = 5,
         ):
         agent = cls(
                 model_name=model_name,
