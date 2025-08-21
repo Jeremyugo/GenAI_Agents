@@ -90,14 +90,14 @@ class PlanningAgent(BaseAgent):
         graph_builder = StateGraph(AgentState)
 
         graph_builder.add_node('planning_agent', self._agent_node)
-        graph_builder.add_node('get_feedback', self._feedback_node)
+        # graph_builder.add_node('get_feedback', self._feedback_node)
         
         graph_builder.set_entry_point('planning_agent')
-        graph_builder.add_edge('planning_agent', 'get_feedback')
-        graph_builder.add_conditional_edges(
-            'get_feedback',
-            lambda state: state
-        )
+        # graph_builder.add_edge('planning_agent', 'get_feedback')
+        # graph_builder.add_conditional_edges(
+        #     'get_feedback',
+        #     lambda state: state
+        # )
 
         planner_agent = graph_builder.compile()
         
