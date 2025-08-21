@@ -92,7 +92,6 @@ Creates a research plan with the following items:
 """
 
 
-
 search_query_generation_prompt="""You are an expert technical writer, helping to generate search queries for research report on a topic given a plan.
 
 The report will be focused on the following topic:
