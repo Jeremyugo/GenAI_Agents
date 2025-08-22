@@ -6,12 +6,25 @@ This repository will contain code for building LangChain and LangGraph Generativ
 - Multi-Agent collaborators
 - Heirarchical & Supervisor Agent Teams
 
-### *In Progress 🛠️*
+# Agents
 
-The repo is currently being worked on
+## 1. [Deep Researcher Multi-Agent](./deep_researcher_multi-agent/) -> [demo](./deep_researcher_multi-agent/demo.ipynb)
 
-## Getting Started
-1. create a new virtual environment, and cd into the project's root dir then run the following in the terminal:
-```
-pip install -r requirements.txt
-```
+An advanced multi-agent system for automated research and report writing. The system comprises three specialized agents working together to research topics, analyze information, and generate comprehensive reports.
+
+![multi-agent](./deep_researcher_multi-agent//static/graph.png)
+
+
+## 2. [Self-Corrective Agentic RAG](./self-corrective-agentic-RAG/) -> [demo](./self-corrective-agentic-RAG/static/agentic_rag_demo.gif)
+
+An advanced information retrieval and generation system (RAG) designed to produce more accurate, 
+reliable answers by combining semantic information from a vector store, relationships from a knowledge graph and self correcting logic. 
+
+![agentic-rag](./self-corrective-agentic-RAG/static/graph_flow_v1.png)
+
+
+## 3. [SQL Agent](./sql-agent/)
+
+An SQL agent that connects to a relational database and answers questions using data from the SQL database.
+
+![demo](./sql-agent/static/sql_agent_demo.gif)
