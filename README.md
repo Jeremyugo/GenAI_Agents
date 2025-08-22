@@ -9,7 +9,9 @@ This repository will contain code for building LangChain and LangGraph Generativ
 
 ## 1. [Deep Researcher Multi-Agent](./deep_researcher_multi-agent/) -> [demo](./deep_researcher_multi-agent/demo.ipynb)
 
-An advanced multi-agent system for automated research and report writing. The system comprises three specialized agents working together to research topics, analyze information, and generate comprehensive reports.
+A moderately complex multi-agent system for automated research and report writing. The system comprises three specialized agents working together to research topics, analyze information, and generate comprehensive reports.
+
+Could be extended to retrieve report source and context from a vector store, knowledge graph, APIs like Cohere, Exa, Arxiv, Pubmed.
 
 ![multi-agent](./deep_researcher_multi-agent//static/graph.png)
 
