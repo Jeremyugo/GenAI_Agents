@@ -4,7 +4,6 @@ This repository will contain code for building LangChain and LangGraph Generativ
 - Self-Corrective & Agentic RAG Agents with document and internet search capabilties
 - SQL Agents for interacting with a relational database
 - Multi-Agent collaborators
-- Heirarchical & Supervisor Agent Teams
 
 # Agents
 
