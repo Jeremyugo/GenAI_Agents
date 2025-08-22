@@ -8,10 +8,10 @@ from langgraph.graph import END
 def make_supervisor_node(llm: BaseChatModel, members: list[str]) -> str:
     options = ["FINISH"] + members
     system_prompt = (
-        "You are a supervisor tasked with managing a conversation between the"
-        f" following workers: {members}. Given the following user request,"
+        "You are a research supervisor tasked with routing tasks between the"
+        f" following workers: {members}. Given the following research topic,"
         " respond with the worker to act next. Each worker will perform a"
-        " task and respond with their results and status. When finished,"
+        " task and respond with the results and current_status. When finished,"
         " respond with FINISH."
     )
 
