@@ -35,18 +35,18 @@ class PlanningAgent(BaseAgent):
         
         
     def _agent_node(self, state: AgentState) -> AgentState:
-        messages = state['messages']
+        topic = state['topic']
         writing_plan_feedback = state.get('writing_plan_feedback', '')
         
         research_plan = self.research_plan_chain.invoke(
             {
-                'topic': messages
+                'topic': topic
             }
         )
         
         writing_plan = self.writing_plan_chain.invoke(
             {
-                'topic': messages,
+                'topic': topic,
                 'research_plan': research_plan,
                 'writing_plan_feedback': writing_plan_feedback
             }

@@ -92,7 +92,7 @@ class WritingAgent(BaseAgent):
     async def _agent_node(self, state: AgentState) -> dict:
         section_tasks = [
             self.write_section(
-                topic=state['messages'],
+                topic=state['topic'],
                 section_data=section_data
             )
             for section_data in state['writing_plan_and_sources']
@@ -110,8 +110,6 @@ class WritingAgent(BaseAgent):
         
         return {
             "full_report_draft": full_report,
-            "references": references_section,
-            "next": END
         }
 
 

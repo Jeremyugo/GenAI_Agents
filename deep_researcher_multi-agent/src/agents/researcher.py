@@ -181,11 +181,12 @@ class ResearchAgent(BaseAgent):
         separator = "-"*80
         sections = state['writing_plan'].split(separator)
         sections = [section.strip() for section in sections]
+        print(f"Length of sections: {len(sections)}")
         
         generated_sources = await self.generate_sources(
             {
                 'number_of_queries': self.number_of_queries,
-                'topic': state['messages'],
+                'topic': state['topic'],
                 'writing_plan': sections
             }
         )
