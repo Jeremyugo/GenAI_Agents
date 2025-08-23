@@ -112,7 +112,7 @@ async def retrieve_from_all_sources(
     """
     
     question_extraction_chain = question_extraction_prompt | llm_4o_mini | StrOutputParser()
-    messages = state['messages']
+    messages = state['messages'][-1]
     question = question_extraction_chain.invoke(messages)
     print(f"Question: {question}")
 
