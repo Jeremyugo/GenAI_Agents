@@ -18,7 +18,6 @@ generate_prompt = ChatPromptTemplate.from_messages(
 )
 
 
-
 # Document/Context grading prompt
 grade_system_prompt = """You are a grader assessing relevance of a retrieved document to a user question. \n 
     If the document contains keyword(s) or semantic meaning related to the question, grade it as relevant. \n
@@ -45,6 +44,7 @@ re_write_prompt = ChatPromptTemplate.from_messages(
 )
 
 
+# Question extraction
 question_extraction_system_prompt = """
 You are a question extraction assistant. 
 Your task is to read the user’s message and identify ONLY the core question(s) that are relevant to Bloomberg's March 14, 2025 
@@ -64,7 +64,6 @@ Output: "What problems is Siri facing with AI?"
 User: "I'm curious, how much did Apple spend on acquisitions?" 
 Output: "How much did Apple spend on acquisitions?"
 """
-
 question_extraction_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", question_extraction_system_prompt),
