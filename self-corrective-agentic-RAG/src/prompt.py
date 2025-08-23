@@ -45,22 +45,37 @@ re_write_prompt = ChatPromptTemplate.from_messages(
 )
 
 
-query_classifer_system_prompt = """
-    You are a query classifier in a retrieval-augmented system.
+question_extraction_system_prompt = """
+You are a question extraction assistant. 
+Your task is to read the user’s message and identify ONLY the core question(s) that are relevant to Bloomberg's March 14, 2025 
+report on Apple's AI initiative, Apple Intelligence. This document covers delays in AI feature rollouts, Siri’s redesign, 
+leadership and organizational changes, AI startup acquisitions, technical challenges (on-device vs cloud, performance issues), 
+competitive positioning, financial impacts, and Apple’s recovery strategy.
 
-    Classify the user's query into one of the following types:
+Ignore greetings, context, or extra wording. Return the extracted question(s) in plain text, nothing else.
 
-    1. "conversational" - casual talk, greetings, jokes, opinions, chit-chat.
-    2. "informational" - questions that require facts, knowledge, or external data to answer regarding Apple Inc./Siri, Artificial Intelligence, or Competitor Analysis/Market research
-    
-    Only return one word: either "conversational" or "informational".
+Examples:
+User: "Can you tell me Apple's biggest competitors?" 
+Output: "What are Apple's biggest competitors?"
 
-    Query: "{query}"
-    Classification:
+User: "Hi, could you explain what problems Siri is facing with AI?" 
+Output: "What problems is Siri facing with AI?"
+
+User: "I'm curious, how much did Apple spend on acquisitions?" 
+Output: "How much did Apple spend on acquisitions?"
 """
-query_classifier_prompt = ChatPromptTemplate.from_messages(
+
+question_extraction_prompt = ChatPromptTemplate.from_messages(
     [
-        ("system", query_classifer_system_prompt),
-        ("human", "{query}"),
+        ("system", question_extraction_system_prompt),
+        ("human", "{messages}"),
     ]
 )
+
+
+tool_description = """
+Search and return information about Bloomberg's March 14, 2025 report on Apple's AI initiative, Apple Intelligence. 
+The tool can return details about delayed features, Siri’s redesign, leadership changes, acquisitions, technical challenges, 
+financial impact, competitive positioning, and Apple’s recovery strategy. Useful for answering questions about Apple’s AI 
+struggles, market position, and long-term strategy in the AI space.
+"""
