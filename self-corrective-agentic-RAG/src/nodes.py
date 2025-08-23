@@ -2,7 +2,7 @@ import os
 import sys
 import ast
 from pathlib import Path
-from typing import List, TypedDict
+from typing import List, TypedDict, Annotated
 import asyncio
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -13,12 +13,15 @@ from langchain_community.tools import BraveSearch
 from langchain_openai import ChatOpenAI
 from langchain.schema import Document
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import ToolMessage
 from langgraph.graph import MessagesState
+from langgraph.types import Command
+from langchain_core.tools import tool, InjectedToolCallId
+from langgraph.prebuilt import InjectedState
 
 from src.vector import create_vector_retriever
 from src.knowledge_graph import search_knowledge_graph
-from src.prompt import grade_prompt, generate_prompt, re_write_prompt, query_classifier_prompt
+from src.prompt import grade_prompt, generate_prompt, re_write_prompt, question_extraction_prompt, tool_description
 from utils.config import ENV_FILE_PATH
 
 load_dotenv(ENV_FILE_PATH)
@@ -74,93 +77,30 @@ class AgentState(MessagesState):
     documents_kg: List[str]
     documents: List[str]
     web_search: str
-
-
-def extract_core_question(message: str) -> str:
-    system_prompt = (
-        "You are an assistant that extracts the question from a user message for document retrieval"
-        "Return only the question text without extra commentary"
-    )
+ 
     
-    result = llm_gpt3_5.invoke([
-        HumanMessage(content=system_prompt),
-        HumanMessage(content=message)
-    ])
-    
-    return result.content.strip()
-
-
-
-def classify_query(state: AgentState) -> AgentState:
+def generate_query_or_respond(state: AgentState):
     """
-        Classify the query into either 'conversational' or 'informational'.
-        If the query relates to Apple Inc./Siri, Artificial Intelligence, or Competitor Analysis/Market research
-        then its 'informational' otherwise its 'coonversational'
-
-        Args:
-            query (str): The user query to classify.
-
-        Returns:
-            str: The classification result.
+        Call the model to generate a response based on the current state. Given
+        the question, it will decide to retrieve using the
+        retrieve_from_all_sources tool or simply respond to the user.
     """
+    user_query = state['messages']
     
-    user_query = state['messages'][-1].content
-    query_classifier = query_classifier_prompt | llm_gpt3_5 | StrOutputParser()
-    classification = query_classifier.invoke({'query': user_query})
-
-    if 'conversational' in classification.lower():
-        return 'conversational'
-    else:
-        return 'informational'
-
-    
-# DEPRECATED: This function is no longer used in the current graph flow.   
-def retrieve_from_vectorstore(state: AgentState) -> AgentState:
-    """
-        Retrieve Documents from the Qdrant vectorstore
-        
-        Args:
-            state (dict): The current graph state
-        
-        Returns:
-            state (dict): New 'documents_vs' key added to state, that contains the retrieved documents
-    """
-    
-    question = state['question']
-    
-    compression_retriever = create_vector_retriever()
-    documents_vs = compression_retriever.invoke(question)
+    model = llm_4o_mini.bind_tools([retrieve_from_all_sources])
+    response = model.invoke(user_query)
     
     return {
-        'documents_vs': documents_vs
+        **state,
+        'messages': [response]
     }
 
 
-# DEPRECATED: This function is no longer used in the current graph flow.
-async def retrieve_from_knowledge_graph(state: AgentState) -> AgentState:
-    """
-        Retrieve Documents from the Knowledge Graph
-        
-        Args:
-            state (dict): The current graph state
-        
-        Returns:
-            state (dict): New 'documents_kg' key added to state, that contains the retrieved documents
-    """
-    
-    question = state['question']
-    
-    documents_kg = await search_knowledge_graph(
-        query=question,
-        limit=3
-    )
-    
-    return {
-        'documents_kg': documents_kg
-    }
-
-
-async def retrieve_from_all_sources(state: AgentState) -> AgentState:
+@tool(description=tool_description)
+async def retrieve_from_all_sources(
+        state: Annotated[dict, InjectedState],
+        tool_call_id: Annotated[str, InjectedToolCallId] 
+    ) -> Command:
     """
         Retrieve Documents from both the vectorstore and knowledge graph
         
@@ -171,10 +111,10 @@ async def retrieve_from_all_sources(state: AgentState) -> AgentState:
             state (dict): New 'documents_vs' and 'documents_kg' keys added to state, that contains the retrieved documents
     """
     
-    question = extract_core_question(
-        message=state['messages'][-1].content
-    )
-    print(f"Formulated question: {question}\n\n")
+    question_extraction_chain = question_extraction_prompt | llm_4o_mini | StrOutputParser()
+    messages = state['messages']
+    question = question_extraction_chain.invoke(messages)
+    print(f"Question: {question}")
 
     compression_retriever = create_vector_retriever()
 
@@ -183,11 +123,16 @@ async def retrieve_from_all_sources(state: AgentState) -> AgentState:
         search_knowledge_graph(query=question, limit=5)
     )
     
-    return {
-        'question': question,
-        'documents_vs': documents_vs,
-        'documents_kg': documents_kg
-    }
+    return Command(
+        update={
+            "question": question,
+            "documents_vs": documents_vs,
+            "documents_kg": documents_kg,
+            "messages": [
+                ToolMessage(f"Updated the documents key", tool_call_id=tool_call_id)
+            ]
+        }
+    )
 
 
 def grade_documents(state: AgentState) -> AgentState:
@@ -201,9 +146,9 @@ def grade_documents(state: AgentState) -> AgentState:
             state (dict): Updates documents key with only filtered relevant documents
     """
     
-    question = state['question']
     documents_vs = state['documents_vs']
     documents_kg = state['documents_kg']
+    question = state['question']
     
     documents = documents_vs + documents_kg
     
@@ -232,7 +177,7 @@ def grade_documents(state: AgentState) -> AgentState:
     }
 
 
-def generate_rag_response(state: AgentState) -> AgentState:
+def generate_response(state: AgentState) -> AgentState:
     """
         Generate answer
 
@@ -256,26 +201,6 @@ def generate_rag_response(state: AgentState) -> AgentState:
     return {
         'question': question,
         'documents': documents,
-        'generation': generation,
-    }
-
-
-def generate_conversational_response(state: AgentState) -> AgentState:
-    """
-        Generate conversational response
-
-        Args:
-            state (dict): The current graph state
-
-        Returns:
-            state (dict): New key added to state, generation, that contains LLM generation
-    """
-    
-    user_query = state['messages']
-
-    generation = conversational_chain.invoke(user_query)
-
-    return {
         'generation': generation,
     }
 
@@ -315,7 +240,6 @@ def web_search(state: AgentState) -> AgentState:
     
     question = state['question']
     documents = state['documents']
-    print(f"Web search for question: {question}")
     docs = web_search_tool.invoke(
         {
             'query': question
