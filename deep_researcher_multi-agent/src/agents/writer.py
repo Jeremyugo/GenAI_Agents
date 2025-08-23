@@ -16,7 +16,7 @@ from langgraph.graph import StateGraph, END
 
 
 class WritingAgent(BaseAgent):
-    def __init__(self, model_name: str = "gpt-4o-mini"):
+    def __init__(self, model_name: str = "gpt-4.1"):
         self.model = ChatOpenAI(model=model_name)
         self.prompt = ChatPromptTemplate.from_messages(
             [
@@ -26,55 +26,6 @@ class WritingAgent(BaseAgent):
         )
         
         self.chain = self.prompt | self.model
-
-
-    def extract_references_from_section(self, section_data: str) -> list:
-        """Extract and format references from a section's source data"""
-        references = []
-        lines = section_data.split('\n')
-        in_sources_section = False
-        
-        current_ref = {}
-        for line in lines:
-            if line.lower().startswith('sources:'):
-                in_sources_section = True
-                continue
-                
-            if in_sources_section:
-                if line.startswith('Source ') and ' - ' in line:
-                    if current_ref:  
-                        references.append(current_ref)
-                    ref_num = line.split(' ', 1)[1].split(' - ', 1)[0]
-                    title = line.split(' - ', 1)[1].strip()
-                    current_ref = {'number': ref_num, 'title': title}
-                elif line.startswith('URL: '):
-                    current_ref['url'] = line.split('URL: ')[1].strip()
-                elif line.startswith('Most relevant content from source: '):
-                    current_ref['content'] = line.split('Most relevant content from source: ')[1].strip()
-        
-        if current_ref:  
-            references.append(current_ref)
-        
-        return references
-
-
-    def format_references(self, all_references: list) -> str:
-        """Format references in IEEE style"""
-        seen = set()
-        unique_refs = []
-        for ref in all_references:
-            ref_key = (ref.get('title', ''), ref.get('url', ''))
-            if ref_key not in seen:
-                seen.add(ref_key)
-                unique_refs.append(ref)
-        
-        references_section = "References\n\n"
-        for i, ref in enumerate(unique_refs, 1):
-            title = ref.get('title', 'No title available')
-            url = ref.get('url', 'No URL available')
-            references_section += f"[{i}] {title}. Available: {url}\n\n"
-        
-        return references_section
 
 
     async def write_section(self, topic: str, section_data: str) -> str:
@@ -98,15 +49,8 @@ class WritingAgent(BaseAgent):
             for section_data in state['writing_plan_and_sources']
         ]
         section_drafts = await asyncio.gather(*section_tasks)
-        
-        all_references = []
-        for section_data in state['writing_plan_and_sources']:
-            section_refs = self.extract_references_from_section(section_data)
-            all_references.extend(section_refs)
-        
-        references_section = self.format_references(all_references)
 
-        full_report = "\n\n".join(section_drafts) + "\n\n" + references_section
+        full_report = "\n\n".join(section_drafts)
         
         return {
             "full_report_draft": full_report,
@@ -124,7 +68,7 @@ class WritingAgent(BaseAgent):
 
 
     @classmethod
-    def create_agent(cls, model_name: str = "gpt-4o-mini"):
+    def create_agent(cls, model_name: str = "gpt-4.1"):
         agent = cls(model_name=model_name).build_agent()
         
         return agent
