@@ -25,7 +25,7 @@ This project implements an advanced multi-agent system for automated research an
    - Generates final well-structured report
 
 ## Deep Research Multi-Agent Graph
-![multi_agent_graph](./static/graph.png)
+![multi_agent_graph](./static/graph_v2.png)
 
 ## Key Features
 - Asynchronous web research
