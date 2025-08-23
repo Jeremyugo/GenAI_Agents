@@ -5,7 +5,7 @@ This repository will contain code for building LangChain and LangGraph Generativ
 - SQL Agents for interacting with a relational database
 - Multi-Agent collaborators
 
-**These projects were solely completed by me and required weeks of personal learning, research, iterations, the occassional failure/errors and certainly no vibe coding, with the sole purpose of understanding the fundamentals of building agentic systems.**
+**These projects were solely completed by me and required weeks of personal learning, research, iterations, the occassional failure/errors and certainly, with the sole purpose of understanding the fundamentals of building agentic systems.**
 
 # Agents
 
