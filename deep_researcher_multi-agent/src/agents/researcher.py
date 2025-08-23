@@ -87,7 +87,7 @@ class ResearchAgent(BaseAgent):
         
         
         
-    def clean_text(self, text: str, max_tokens_per_source: int = 1_000) -> str:
+    def clean_text(self, text: str, max_tokens_per_source: int = 875) -> str:
         text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
         text = re.sub(r'[^\x00-\x7F]+', '', text)        # Remove non-ASCII
         text = re.sub(r'\n+', '\n', text)                # Collapse multiple newlines

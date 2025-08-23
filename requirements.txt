@@ -19,3 +19,4 @@ langchain_community
 langchain-chroma
 langgraph-supervisor
 qdrant_client
+tenacity
