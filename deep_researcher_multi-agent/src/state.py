@@ -11,5 +11,6 @@ class AgentState(MessagesState):
     writing_plan_feedback: Annotated[str, "Feedback on the outline structure"]
     writing_plan_and_sources: Annotated[list[str], "Section writing plan and resources"]
     full_report_draft: Annotated[str, "First report draft"]
+    final_report: Annotated[str, "Final research report"]
     current_stage: Annotated[str, "Recently completed stage"]
     next: Annotated[str, "The next agent to call"]
