@@ -13,7 +13,6 @@ A moderately complex multi-agent system for automated research and report writin
 
 Could be extended to retrieve report source and context from a vector store, knowledge graph, APIs like Cohere, Exa, Arxiv, Pubmed.
 
-![multi-agent](./deep_researcher_multi-agent/static/graph.png)
 
 
 ## 2. [Self-Corrective Agentic RAG](./self-corrective-agentic-RAG/) -> [demo](./self-corrective-agentic-RAG/static/agentic_rag_demo.gif)
