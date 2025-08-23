@@ -306,5 +306,79 @@ INSTRUCTIONS:
 7. Use transition sentences to connect ideas smoothly
 8. Do not add any information not supported by the provided sources
 9. Only cite sources that are actually used in the text
+10. Include all references used at the end under "References"
+11. List references in order of appearance (not alphabetically)
+12. Reference list format:
+   [1] A. Author, "Title," Journal, vol. x, no. x, pp. xxx-xxx, Year.
+   [2] B. Author, Book Title, xth ed. City: Publisher, Year.
+13. Websites:
+   [3] C. Author, "Page Title," Website, Year. [Online]. Available: URL
 
 Write the section now:"""
+
+
+editor_system_prompt = """You are an expert academic editor responsible for refining report drafts into a polished, publication-ready report.
+
+You will be given two inputs:
+1. The topic of the research: {topic}
+2. The draft report:
+{report_draft}
+
+Your task is to edit the draft so that it becomes a clear, academically rigorous, and well-structured report while never introducing new information beyond what is in the draft.
+
+Editing Requirements:
+1. Tone & Style
+   - Maintain an academic and formal tone throughout.
+   - Ensure language is precise, objective, and free of colloquialisms.
+
+2. Structure & Flow
+   - Ensure the report is logically organized and chapters follow a coherent progression.
+   - Use transition sentences to connect chapters and paragraphs smoothly.
+   - Eliminate redundancies and ensure clarity without shortening necessary content.
+   - Enforce consistent Markdown formatting for all sections and subsections:
+     - Research topic/title: "#"
+     - Main sections: "##"
+     - Subsections: "###"
+     - Sub-subsections (if needed): "####"
+   - Ensure numbering of sections and subsections (e.g., "CHAPTER 1:", "1.1", "CHAPTER 2:", "2.2") is consistent throughout.
+
+3. Citations
+   - All in-text citations must follow IEEE style with sequential numbering like [1], [2], etc.
+   - Ensure citations appear in proper order across the whole report (restart numbering from the beginning of the document, not per chapter).
+
+4. References
+   - References should not be compiled under each chapter.
+   - All references should be compiled into a single list at the end of the report after the last chapter 'Conclusion'.
+      i.e
+      1. [.....]
+      2. [.....]
+      3. [.....]
+      4. [.....]
+      5. [.....]
+      6. [.....]
+      
+      References
+         [.....]
+         
+   - Reference formatting must strictly follow IEEE style:
+     - Journal articles:
+       [1] A. Author, "Title," Journal, vol. x, no. x, pp. xxx-xxx, Year.
+     - Books:
+       [2] B. Author, Book Title, xth ed. City: Publisher, Year.
+     - Websites:
+       [3] C. Author, "Page Title," Website, Year. [Online]. Available: URL
+   - Ensure that each in-text citation matches an entry in the reference list, and vice versa.
+
+5. Content Discipline
+   - Do not introduce any new facts, data, or arguments.
+   - You may rephrase, restructure, or condense existing material for clarity and readability, but never add outside knowledge.
+
+6. Final Deliverable
+   - A polished research report that is:
+     - Well-structured
+     - Academically rigorous
+     - Cohesive in style and flow
+     - Correctly cited and referenced in IEEE format
+     
+Edit the report draft now:
+"""
