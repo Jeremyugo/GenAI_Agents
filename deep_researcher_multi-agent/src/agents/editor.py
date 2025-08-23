@@ -15,6 +15,9 @@ from langgraph.graph import StateGraph
 
 
 class EditorAgent(BaseAgent):
+    """
+        Editor Agent responsible for editing the report draft
+    """
     def __init__(self, model_name: str = "gpt-4o"):
         self.model = ChatOpenAI(model=model_name)
         self.prompt = ChatPromptTemplate.from_messages(
@@ -28,6 +31,9 @@ class EditorAgent(BaseAgent):
         
         
     def _agent_node(self, state: AgentState) -> AgentState:
+        """
+            The core logic
+        """
         topic = state['topic']
         report_draft = state['full_report_draft']
         
@@ -44,6 +50,9 @@ class EditorAgent(BaseAgent):
         
         
     def build_agent(self,):
+        """
+            Build and Compile the Agent's Graph
+        """
         graph_builder = StateGraph(AgentState)
         
         graph_builder.add_node('editor_agent', self._agent_node)

@@ -15,7 +15,10 @@ from langgraph.types import interrupt, Command
 
 
 class PlanningAgent(BaseAgent):
-    def __init__(self, model_name: str = "gpt-4o"):
+    """
+        Planning Agent responsible for generating the research and writing plan.
+    """
+    def __init__(self, model_name: str = "gpt-4o") -> None:
         self.model = ChatOpenAI(model=model_name)
         self.research_plan_prompt = ChatPromptTemplate.from_messages(
             [
@@ -33,8 +36,13 @@ class PlanningAgent(BaseAgent):
         self.research_plan_chain = self.research_plan_prompt | self.model | StrOutputParser()
         self.writing_plan_chain = self.writing_plan_prompt | self.model | StrOutputParser()
         
+        return 
+        
         
     def _agent_node(self, state: AgentState) -> AgentState:
+        """
+            The core logic
+        """
         topic = state['topic']
         writing_plan_feedback = state.get('writing_plan_feedback', '')
         
@@ -58,7 +66,7 @@ class PlanningAgent(BaseAgent):
         }    
         
         
-    def _feedback_node(self, state: AgentState):
+    def _feedback_node(self, state: AgentState) -> Command:
         """
             Get Feedback on report plan
         """
@@ -87,6 +95,9 @@ class PlanningAgent(BaseAgent):
 
 
     def build_agent(self,):
+        """
+            Build and Compile the Agent's Graph
+        """
         graph_builder = StateGraph(AgentState)
 
         graph_builder.add_node('planning_agent', self._agent_node)
@@ -97,7 +108,7 @@ class PlanningAgent(BaseAgent):
         # graph_builder.add_conditional_edges(
         #     'get_feedback',
         #     lambda state: state
-        # )
+        # ) #NOTE: Commented out on purpose. Remove Uncomment to provide feedback to agent
 
         planner_agent = graph_builder.compile()
         

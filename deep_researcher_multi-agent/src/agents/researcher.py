@@ -40,6 +40,9 @@ class Queries(BaseModel):
     
     
 class ResearchAgent(BaseAgent):
+    """
+        Research Agent responsible for performing research and returning resources used to write report
+    """
     def __init__(
             self, 
             model_name: str = "gpt-4o", 
@@ -64,6 +67,9 @@ class ResearchAgent(BaseAgent):
     
     
     async def generate_sources(self, state: dict) -> list[str]:
+        """
+            Generates a list of section writing plan with corresponding sources to use
+        """
         results = []
         for section in state['writing_plan']:
             web_search_queries = await self.chain.ainvoke(
@@ -88,6 +94,9 @@ class ResearchAgent(BaseAgent):
         
         
     def clean_text(self, text: str, max_tokens_per_source: int = 875) -> str:
+        """
+            Cleans and truncates source page content
+        """
         text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
         text = re.sub(r'[^\x00-\x7F]+', '', text)        # Remove non-ASCII
         text = re.sub(r'\n+', '\n', text)                # Collapse multiple newlines
@@ -107,6 +116,9 @@ class ResearchAgent(BaseAgent):
     
     
     async def deduplicate_and_format_sources(self, search_results: list[str]) -> str:
+        """
+            Removes duplicates and format sources
+        """
         try:
             parsed_results = []
             for result in search_results:
@@ -145,6 +157,9 @@ class ResearchAgent(BaseAgent):
     
     
     async def brave_search_async(self, queries: list[str]) -> list:
+        """
+            Performs Brave Search on queries asynchronously
+        """
         async def search(query):
             while True:
                 try:
@@ -163,14 +178,20 @@ class ResearchAgent(BaseAgent):
         return results
     
     
-    async def load_with_real_timeout(self, url: str, timeout: float = 2.0):
+    async def load_with_real_timeout(self, url: str, timeout: float = 2.0) -> list:
+        """
+            Times-out if web page is taking time to laod/read
+        """
         try:
             return await asyncio.wait_for(asyncio.to_thread(WebBaseLoader(url).load), timeout)
         except (asyncio.TimeoutError, Exception):
             return []
 
     
-    async def load_all_fast(self, urls: list[str]):
+    async def load_all_fast(self, urls: list[str]) -> list:
+        """
+            Loads web pages asynchronously
+        """
         tasks = [self.load_with_real_timeout(url) for url in urls]
         results = await asyncio.gather(*tasks)
         return [doc for sublist in results for doc in sublist]
@@ -178,6 +199,9 @@ class ResearchAgent(BaseAgent):
 
         
     async def _agent_node(self, state: AgentState) -> AgentState:
+        """
+            The core logic
+        """
         separator = "-"*80
         sections = state['writing_plan'].split(separator)
         sections = [section.strip() for section in sections]
@@ -197,6 +221,9 @@ class ResearchAgent(BaseAgent):
         
     
     def build_agent(self):
+        """
+            Build and Compile the Agent's Graph
+        """
         graph_builder = StateGraph(AgentState)
         
         graph_builder.add_node('generate_sources', self._agent_node)

@@ -7,7 +7,6 @@ from src.prompts import report_draft_prompt
 from src.utils import BaseAgent
 
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
 from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
 
@@ -16,6 +15,9 @@ from langgraph.graph import StateGraph, END
 
 
 class WritingAgent(BaseAgent):
+    """
+        Writing Agent responsible for drafting the report
+    """
     def __init__(self, model_name: str = "gpt-4.1"):
         self.model = ChatOpenAI(model=model_name)
         self.prompt = ChatPromptTemplate.from_messages(
@@ -29,7 +31,9 @@ class WritingAgent(BaseAgent):
 
 
     async def write_section(self, topic: str, section_data: str) -> str:
-
+        """
+            Writes each section / chapter of the report asynchronously
+        """
         response = await self.chain.ainvoke(
             {
                 'topic': topic,
@@ -40,7 +44,10 @@ class WritingAgent(BaseAgent):
         return response.content
 
 
-    async def _agent_node(self, state: AgentState) -> dict:
+    async def _agent_node(self, state: AgentState) -> dict[str, str]:
+        """
+            The core logic
+        """
         section_tasks = [
             self.write_section(
                 topic=state['topic'],
@@ -58,6 +65,9 @@ class WritingAgent(BaseAgent):
 
 
     def build_agent(self):
+        """
+            Build and Compile the Agent's Graph
+        """
         graph = StateGraph(AgentState)
         graph.add_node("writing_agent", self._agent_node)
         

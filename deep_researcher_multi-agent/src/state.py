@@ -3,6 +3,7 @@ from langgraph.graph import MessagesState
 
 
 class AgentState(MessagesState):
+    """Multi-Agent Graph State"""
     topic: Annotated[list, "The user's research request"]
     research_plan: Annotated[str, "The plan to write the research report"]
     search_queries: Annotated[list[str], "List of web search queries"]
