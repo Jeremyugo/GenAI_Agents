@@ -1,7 +1,7 @@
 # 🤖 MultiAgent Research and Report Writing
 
 ## Overview
-This project implements an advanced multi-agent system for automated research and report writing using LangChain and LangGraph. The system comprises three specialized agents working together to research topics, analyze information, and generate comprehensive reports.
+This project implements an advanced multi-agent system for automated research and report writing using LangChain and LangGraph. The system comprises four specialized agents working together to research topics, analyze information, draft a report and generate the final report.
 
 ## System Architecture
 
@@ -18,7 +18,11 @@ This project implements an advanced multi-agent system for automated research an
 3. **📃Writing Agent** (`src/agents/writer.py`)
    - Generates structured writing plans
    - Integrates research findings into coherent sections
-   - Produces well-organized report drafts
+   - Produces well-organized report draft
+
+4. **📑Editor Agent** (`src/agents/editor.py`)
+   - Edits the report draft
+   - Generates final well-structured report
 
 ## Deep Research Multi-Agent Graph
 ![multi_agent_graph](./static/graph.png)
@@ -46,9 +50,9 @@ deep_researcher_multi-agent/
 │   ├── agents/
 │   │   ├── planner.py      # Planning agent implementation
 │   │   ├── researcher.py   # Research agent implementation
-│   │   └── writer.py       # Writing agent implementation
-│   ├── teams/
-│   │   └── planning_team.py # Team orchestration
+│   │   ├── writer.py       # Writing agent implementation
+│   │   └── editor.py       # Editor agent implementation
+│   │
 │   ├── prompts.py          # System prompts
 │   ├── state.py           # State management
 │   ├── utils.py           # Utility functions
