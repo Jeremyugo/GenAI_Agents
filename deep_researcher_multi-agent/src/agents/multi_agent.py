@@ -3,16 +3,18 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from src.state import AgentState
+from src.helper import make_supervisor_node
+
 from src.agents.planner import PlanningAgent
 from src.agents.researcher import ResearchAgent
 from src.agents.writer import WritingAgent
-from src.helper import make_supervisor_node
-from langchain_core.messages import HumanMessage
+from src.agents.editor import EditorAgent
 
 from typing import Literal
 
+from langchain_core.messages import HumanMessage
 from langgraph.types import Command
-from langgraph.graph import END, StateGraph
+from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
 
 
@@ -62,7 +64,7 @@ async def research_node(state: AgentState) -> Command[Literal['supervisor']]:
     
 async def write_node(state: AgentState) -> Command[Literal['supervisor']]:
     message = HumanMessage(
-            content="The research report has been drafted. We can now end the run by calling 'FINISH'",
+            content="The research report has been drafted. We can now move on to the edit phase",
             name='write'
         )
         
@@ -81,10 +83,33 @@ async def write_node(state: AgentState) -> Command[Literal['supervisor']]:
     )
     
      
+     
+def edit_node(state: AgentState) -> Command[Literal['supervisor']]:
+    message = HumanMessage(
+            content="The final research report has been edited. We can now end the run by calling 'FINISH'",
+            name='write'
+        )
+        
+    edit_agent = EditorAgent.create_agent()
+    result = edit_agent.invoke(state)
+    
+    final_report = result.get('final_report', '')
+    
+    return Command(
+        update={
+            'final_report': final_report,
+            'current_stage': 'editing_completed',
+             'messages': [message]
+        },
+        goto='supervisor'
+    )   
+     
+     
+     
 def build_research_team():
     research_supervisor_node = make_supervisor_node(
         llm=ChatOpenAI(model="gpt-4o"),
-        members=['plan', 'research', 'write']
+        members=['plan', 'research', 'write', 'edit']
     )
     
     graph = (
@@ -93,6 +118,7 @@ def build_research_team():
         .add_node('plan', plan_node)
         .add_node('research', research_node)
         .add_node('write', write_node)
+        .add_node('edit', edit_node)
         .set_entry_point('supervisor')
     ).compile()
     
