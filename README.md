@@ -22,7 +22,7 @@ Could be extended to retrieve report source and context from a vector store, kno
 An advanced information retrieval and generation system (RAG) designed to produce more accurate, 
 reliable answers by combining semantic information from a vector store, relationships from a knowledge graph and self correcting logic. 
 
-![agentic-rag](./self-corrective-agentic-RAG/static/graph_flow_v1.png)
+![agentic-rag](./self-corrective-agentic-RAG/static/graph_flow_v2.png)
 
 
 ## 3. [SQL Agent](./sql-agent/)
