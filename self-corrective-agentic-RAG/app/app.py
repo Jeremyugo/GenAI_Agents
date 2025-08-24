@@ -28,7 +28,7 @@ async def get_response(query: str, thread_id: str):
     )
 
 
-def run_app() -> None:
+async def run_app() -> None:
     st.title('Agentic RAG 🤖')
 
     with st.sidebar:
@@ -55,21 +55,10 @@ def run_app() -> None:
 
             with st.spinner('Thinking...'):
                 try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        response = asyncio.run_coroutine_threadsafe(
-                            interact_with_agent(
-                                query=user_query,
-                                thread_id=st.session_state['thread_id']
-                            ), loop
-                        ).result()
-                    else:
-                        response = loop.run_until_complete(
-                            interact_with_agent(
-                                query=user_query,
-                                thread_id=st.session_state['thread_id']
-                            )
-                        )
+                    response = await interact_with_agent(
+                        query=user_query,
+                        thread_id=st.session_state['thread_id']
+                    )
 
                     with st.chat_message('assistant'):
                         st.markdown(response)
@@ -87,4 +76,4 @@ def run_app() -> None:
 
 
 if __name__ == '__main__':
-    run_app()
+    asyncio.run(run_app())
