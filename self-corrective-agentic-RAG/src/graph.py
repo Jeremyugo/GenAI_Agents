@@ -2,7 +2,6 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-import asyncio
 from src import workarounds
 workarounds.monkey_patch()
 
@@ -74,10 +73,7 @@ async def interact_with_agent(
             'messages': query,
         },
         config=config
-    )
-
-    return response['generation']
+    )    
     
+    return response['messages'][-1].content
     
-if __name__ == '__main__':
-    asyncio.run(interact_with_agent(query="Hi my name is Jerry!", thread_id='1'))
