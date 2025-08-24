@@ -40,11 +40,8 @@ This creates a smarter system that retrieves better information and generates mo
 ### Graph Flow
 **Current Version:** Added a Query Classifier
 
-<img src="./static/graph_flow_v1.png" width="400" style="margin-right:10px;" />
+<img src="./static/graph_flow_v2.png" width="400" style="margin-right:10px;" />
 
-**Previous Version**
-
-<img src="./static/graph_flow_v0.png" width="400" style="margin-right:10px;" />
 
 ### Lessons Learnt 
 The biggest lesson i've learnt building Agentic systems is how important context engineering is. In summary:
