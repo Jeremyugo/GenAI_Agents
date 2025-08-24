@@ -13,7 +13,7 @@ from langchain_community.tools import BraveSearch
 from langchain_openai import ChatOpenAI
 from langchain.schema import Document
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import ToolMessage, AIMessage
 from langgraph.graph import MessagesState
 from langgraph.types import Command
 from langchain_core.tools import tool, InjectedToolCallId
@@ -26,7 +26,7 @@ from utils.config import ENV_FILE_PATH
 
 load_dotenv(ENV_FILE_PATH)
 
-llm_gpt3_5 = ChatOpenAI(model='gpt-3.5-turbo')
+llm_4o_mini = ChatOpenAI(model='gpt-3.5-turbo')
 llm_4o_mini = ChatOpenAI(model='gpt-4o-mini')
 
 
@@ -43,13 +43,13 @@ structured_llm_grader = llm_4o_mini.with_structured_output(GradeDocuments)
 retrieval_grader = grade_prompt | structured_llm_grader
 
 # answer generation llm chain
-rag_chain = generate_prompt | llm_gpt3_5 | StrOutputParser()
+rag_chain = generate_prompt | llm_4o_mini | StrOutputParser()
 
 # rewrite user query llm chain
-question_rewriter = re_write_prompt | llm_gpt3_5 |StrOutputParser()
+question_rewriter = re_write_prompt | llm_4o_mini |StrOutputParser()
 
 # conversational llm chain
-conversational_chain = llm_gpt3_5 | StrOutputParser()
+conversational_chain = llm_4o_mini | StrOutputParser()
 
 # web search tool (Brave Search)
 web_search_tool = BraveSearch.from_api_key(
@@ -112,9 +112,9 @@ async def retrieve_from_all_sources(
     """
     
     question_extraction_chain = question_extraction_prompt | llm_4o_mini | StrOutputParser()
-    messages = state['messages'][-1]
-    question = question_extraction_chain.invoke(messages)
-    print(f"Question: {question}")
+    message = state['messages'][-2]
+    print(f"Latest Message: {message}\n\n")
+    question = question_extraction_chain.invoke(message)
 
     compression_retriever = create_vector_retriever()
 
@@ -198,10 +198,10 @@ def generate_response(state: AgentState) -> AgentState:
         }
     )
     
+    generation = [AIMessage(content=generation)]
+    
     return {
-        'question': question,
-        'documents': documents,
-        'generation': generation,
+        'messages': state['messages'] + generation
     }
 
 
