@@ -32,6 +32,12 @@ This creates a smarter system that retrieves better information and generates mo
 ![rag-demo](./static/agentic_rag_demo.gif)
 
 
+## LangSmith Evaluation
+<p>
+  <img src="./static/apple_intelligence_langsmith_evaluation_result.png" width="1000" height="500" />
+</p>
+
+
 ### Knowledge Graph 🎯
 <p>
   <img src="./static/graphiti_KG.png" width="500" height="400" />
