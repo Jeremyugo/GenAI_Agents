@@ -63,7 +63,7 @@ class AgentState(MessagesState):
     Represents the state of our graph.
 
     Attributes:
-        question: question
+        user_question: question
         generation: LLM generation
         web_search: whether to add search
         documents_vs: list of documents from vectorstore
@@ -71,7 +71,7 @@ class AgentState(MessagesState):
         documents: list of all documents (vectorstore + knowledge graph)
     """
     
-    question: str
+    user_question: str
     generation: str
     documents_vs: List[str]
     documents_kg: List[str]
@@ -113,7 +113,6 @@ async def retrieve_from_all_sources(
     
     question_extraction_chain = question_extraction_prompt | llm_4o_mini | StrOutputParser()
     message = state['messages'][-2]
-    print(f"Latest Message: {message}\n\n")
     question = question_extraction_chain.invoke(message)
 
     compression_retriever = create_vector_retriever()
@@ -125,7 +124,7 @@ async def retrieve_from_all_sources(
     
     return Command(
         update={
-            "question": question,
+            'user_question': question,
             "documents_vs": documents_vs,
             "documents_kg": documents_kg,
             "messages": [
@@ -148,7 +147,7 @@ def grade_documents(state: AgentState) -> AgentState:
     
     documents_vs = state['documents_vs']
     documents_kg = state['documents_kg']
-    question = state['question']
+    question = state['user_question']
     
     documents = documents_vs + documents_kg
     
@@ -158,7 +157,7 @@ def grade_documents(state: AgentState) -> AgentState:
     for doc in documents:
         score = retrieval_grader.invoke(
             {
-                'question': question,
+                'user_question': question,
                 'document': doc
             }
         )
@@ -171,7 +170,6 @@ def grade_documents(state: AgentState) -> AgentState:
             continue
     
     return {
-        'question': question,
         'documents': filtered_docs,
         'web_search': web_search
     }
@@ -188,12 +186,12 @@ def generate_response(state: AgentState) -> AgentState:
             state (dict): New key added to state, generation, that contains LLM generation
     """
     
-    question = state['question']
+    question = state['user_question']
     documents = state['documents']
 
     generation = rag_chain.invoke(
         {
-            'question': question,
+            'user_question': question,
             'context': documents,
         }
     )
@@ -216,13 +214,13 @@ def rewrite_query(state: AgentState) -> AgentState:
             state (dict): Updates question key with a re-phrased question
     """
     
-    question = state['question']
+    question = state['user_question']
     documents = state['documents']
     
-    question_rewriter.invoke({'question': question})
+    question_rewriter.invoke({'user_question': question})
     
     return {
-        'question': question,
+        'user_question': question,
         'documents': documents
     }
     
@@ -238,7 +236,7 @@ def web_search(state: AgentState) -> AgentState:
             state (dict): Updates documents key with appended web results
     """
     
-    question = state['question']
+    question = state['user_question']
     documents = state['documents']
     docs = web_search_tool.invoke(
         {
@@ -251,7 +249,7 @@ def web_search(state: AgentState) -> AgentState:
     documents.append(web_results)
     
     return {
-        'question': question,
+        'user_question': question,
         'documents': documents
     }
     

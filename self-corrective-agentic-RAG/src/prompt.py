@@ -6,14 +6,14 @@ from langchain import hub
 generate_system_prompt = """
 You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. 
 If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
-Question: {question} 
+Question: {user_question} 
 Context: {context} 
 Answer:
 """
 generate_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", generate_system_prompt),
-        ("human", "Question: {question} \n\n Context: {context}"),
+        ("human", "Question: {user_question} \n\n Context: {context}"),
     ]
 )
 
@@ -25,7 +25,7 @@ grade_system_prompt = """You are a grader assessing relevance of a retrieved doc
 grade_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", grade_system_prompt),
-        ("human", "Retrieved document: \n\n {document} \n\n User question: {question}"),
+        ("human", "Retrieved document: \n\n {document} \n\n User question: {user_question}"),
     ]
 )
 
@@ -38,7 +38,7 @@ re_write_prompt = ChatPromptTemplate.from_messages(
         ("system", re_write_system_prompt),
         (
             "human",
-            "Here is the initial question: \n\n {question} \n Formulate an improved question.",
+            "Here is the initial question: \n\n {user_question} \n Formulate an improved question.",
         ),
     ]
 )
