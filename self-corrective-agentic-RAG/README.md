@@ -32,7 +32,7 @@ This creates a smarter system that retrieves better information and generates mo
 ![rag-demo](./static/agentic_rag_demo.gif)
 
 
-## LangSmith Evaluation
+## RAG Evaluation using RAGAS and LangSmith
 <p>
   <img src="./static/apple_intelligence_langsmith_evaluation_result.png" width="1000" height="500" />
 </p>
