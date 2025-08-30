@@ -7,12 +7,19 @@ from src.graph import interact_with_agent
 import asyncio
 import nest_asyncio
 import random
+import time
 import streamlit as st
 nest_asyncio.apply()
 
 
 def generate_thread_id():
     return random.randint(1, 10**10)
+
+
+def stream_response(response: str):
+    for word in response.split(" "):
+        yield word + " "
+        time.sleep(0.02)
 
 
 st.set_page_config(
@@ -61,7 +68,7 @@ async def run_app() -> None:
                     )
 
                     with st.chat_message('assistant'):
-                        st.markdown(response)
+                        st.write_stream(stream_response(response))
                     st.session_state['messages'].append(
                         {
                             'role': 'assistant',
