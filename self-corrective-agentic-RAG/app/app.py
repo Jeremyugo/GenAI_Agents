@@ -60,7 +60,7 @@ async def run_app() -> None:
                 st.markdown(user_query)
             st.session_state.messages.append({"role": "user", "content": user_query})
 
-            with st.spinner('Thinking...'):
+            with st.spinner(text='Thinking...', show_time=True):
                 try:
                     response = await interact_with_agent(
                         query=user_query,
